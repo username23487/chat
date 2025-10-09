@@ -18,8 +18,10 @@
             margin: 5px 0; 
             border-radius: 5px; 
         }
+        .mesaj strong {
+            color: #0d47a1; /* Kullanıcı adı rengi */
+        }
         input { 
-            width: 70%; 
             padding: 10px; 
             font-size: 16px; 
         }
@@ -31,19 +33,34 @@
             border: none; 
             cursor: pointer; 
         }
+        /* Yeni eklenen stiller */
+        #kullanici-giris { text-align: center; margin-top: 50px; }
+        #sohbet-alani { display: none; } /* Başlangıçta sohbet alanını gizle */
     </style>
 </head>
 <body>
-    <h2>💬 Sohbet Odası</h2>
-    <div id="mesajlar"></div>
-    <input id="mesajInput" type="text" placeholder="Mesajını yaz...">
-    <button onclick="mesajGonder()">GÖNDER</button>
+
+    <!-- YENİ: Kullanıcı Adı Giriş Ekranı -->
+    <div id="kullanici-giris">
+        <h2>Sohbete Katıl</h2>
+        <input id="kullaniciAdiInput" type="text" placeholder="Kullanıcı adını yaz...">
+        <button onclick="sohbeteKatil()">KATIL</button>
+    </div>
+
+    <!-- Sohbet Ekranı (Başlangıçta gizli) -->
+    <div id="sohbet-alani">
+        <h2>💬 Sohbet Odası</h2>
+        <div id="mesajlar"></div>
+        <input id="mesajInput" type="text" placeholder="Mesajını yaz..." style="width: 70%;">
+        <button onclick="mesajGonder()">GÖNDER</button>
+    </div>
+
 
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     
     <script>
-        // Senin özel Firebase ayarların buraya eklendi
+        // Senin özel Firebase ayarların burada olmalı
         const firebaseConfig = {
             apiKey: "AIzaSyC5XS00Wu02kEVYj5thRuDXl8zhLQrRDR4",
             authDomain: "chatuygulama-cbf18.firebaseapp.com",
@@ -55,15 +72,28 @@
             measurementId: "G-9FSZXNYLBD"
         };
         
-        // Firebase başlatılıyor
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         
-        // Mesaj gönderme fonksiyonu
+        let kullaniciAdi = ''; // Kullanıcı adını saklamak için değişken
+
+        // YENİ: Sohbete katılma fonksiyonu
+        function sohbeteKatil() {
+            kullaniciAdi = document.getElementById('kullaniciAdiInput').value;
+            if (kullaniciAdi) {
+                document.getElementById('kullanici-giris').style.display = 'none'; // Giriş ekranını gizle
+                document.getElementById('sohbet-alani').style.display = 'block';  // Sohbet ekranını göster
+            } else {
+                alert('Lütfen bir kullanıcı adı girin!');
+            }
+        }
+
+        // GÜNCELLENDİ: Mesaj gönderme fonksiyonu artık kullanıcı adını da gönderiyor
         function mesajGonder() {
             const mesaj = document.getElementById('mesajInput').value;
-            if (mesaj) {
+            if (mesaj && kullaniciAdi) {
                 database.ref('mesajlar').push({
+                    kullanici: kullaniciAdi, // Kullanıcı adını ekledik
                     metin: mesaj,
                     zaman: Date.now()
                 });
@@ -71,20 +101,28 @@
             }
         }
         
-        // Veritabanından yeni mesajları dinleme
+        // GÜNCELLENDİ: Gelen mesajları gösterirken kullanıcı adını da gösteriyor
         database.ref('mesajlar').on('child_added', (snapshot) => {
             const mesaj = snapshot.val();
             const div = document.createElement('div');
             div.className = 'mesaj';
-            div.textContent = mesaj.metin;
+            
+            // Kullanıcı adını kalın, mesajı normal yazdır
+            const strong = document.createElement('strong');
+            strong.textContent = mesaj.kullanici + ': ';
+            div.appendChild(strong);
+            div.appendChild(document.createTextNode(mesaj.metin));
+
             document.getElementById('mesajlar').appendChild(div);
-            // En alta kaydır
             document.getElementById('mesajlar').scrollTop = 999999;
         });
         
-        // Enter tuşuyla mesaj gönderme
+        // Enter tuşuyla mesaj ve kullanıcı adı gönderme
         document.getElementById('mesajInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') mesajGonder();
+        });
+        document.getElementById('kullaniciAdiInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sohbeteKatil();
         });
     </script>
 </body>
