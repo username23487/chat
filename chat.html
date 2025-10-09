@@ -1,66 +1,61 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sohbet Uygulaması (Geçici)</title>
+    <title>Sohbet Uygulaması</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; background: #f0f0f0; }
-        #auth-container { display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .form-box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 300px; text-align: center; }
-        .form-box h2 { margin-top: 0; color: #333; }
-        .form-box input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .form-box button { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        .form-box a { color: #007bff; text-decoration: none; cursor: pointer; }
+        #auth-container { height: 100vh; display: flex; justify-content: center; align-items: center; }
+        .auth-box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 320px; text-align: center; }
+        .auth-box h2 { margin-top: 0; }
+        .auth-box input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .auth-box button { width: 100%; padding: 10px; border: none; border-radius: 4px; background: #4CAF50; color: white; font-size: 16px; cursor: pointer; }
+        .auth-box a { color: #007bff; text-decoration: none; cursor: pointer; display: block; margin-top: 15px; }
         #register-form { display: none; }
-        #chat-app-container { display: none; flex-direction: column; height: 100vh; padding: 20px; box-sizing: border-box; }
-        #header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        #mesajlar { background: white; flex-grow: 1; overflow-y: scroll; padding: 15px; border: 2px solid #ccc; border-radius: 8px; margin-bottom: 10px; }
-        .mesaj { background: #e3f2fd; padding: 8px 12px; margin: 6px 0; border-radius: 15px; max-width: 70%; word-wrap: break-word; }
+        #app-container { display: none; height: 100vh; }
+        #chat-app-layout { display: flex; height: 100%; }
+        #sidebar { width: 250px; background: #333; color: white; padding: 15px; display: flex; flex-direction: column; box-sizing: border-box; }
+        #chat-list, #online-users-list { list-style: none; padding: 0; margin: 10px 0; }
+        #chat-list { max-height: 40%; overflow-y: auto; }
+        #chat-list li, #online-users-list li { padding: 10px; cursor: pointer; border-radius: 5px; margin-bottom: 5px; word-break: break-word; }
+        #chat-list li.active { background: #555; }
+        #user-info { margin-top: auto; font-size: 12px; }
+        #main-chat { flex-grow: 1; display: flex; flex-direction: column; padding: 20px; }
+        #chat-title { margin-top: 0; }
+        #mesajlar { background: white; flex-grow: 1; overflow-y: scroll; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+        .mesaj { background: #e3f2fd; padding: 8px 12px; margin: 6px 0; border-radius: 15px; max-width: 70%; display: flex; flex-direction: column; }
         .mesaj strong { color: #0d47a1; }
-        #input-area { display: flex; }
-        #mesajInput { flex-grow: 1; padding: 10px; font-size: 16px; border: 2px solid #ccc; border-radius: 5px; }
+        .mesaj .timestamp { font-size: 11px; color: #555; align-self: flex-end; margin-top: 4px; }
+        #input-area { display: flex; align-items: center; }
+        #mesajInput { flex-grow: 1; padding: 10px; font-size: 16px; border-radius: 5px; }
+        .online-dot { height: 8px; width: 8px; background-color: #4CAF50; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        #online-users-list li { cursor: default; }
     </style>
 </head>
 <body>
-
     <div id="auth-container">
-        <div class="form-box">
-            <div id="login-form">
-                <h2>Giriş Yap</h2>
-                <input type="email" id="loginEmail" placeholder="E-posta">
-                <input type="password" id="loginPassword" placeholder="Şifre">
-                <button onclick="loginUser()">GİRİŞ YAP</button>
-                <p>Hesabın yok mu? <a onclick="toggleForm()">Kayıt ol</a></p>
+        <div class="auth-box"><div id="login-form"><h2>Giriş Yap</h2><input type="email" id="login-email" placeholder="E-posta"><input type="password" id="login-password" placeholder="Şifre"><button onclick="girisYap()">GİRİŞ YAP</button><a onclick="toggleForms()">Hesabın yok mu? Kayıt Ol</a></div><div id="register-form"><h2>Kayıt Ol</h2><input type="text" id="register-username" placeholder="Kullanıcı Adı"><input type="email" id="register-email" placeholder="E-posta"><input type="password" id="register-password" placeholder="Şifre"><button onclick="kayitOl()">KAYIT OL</button><a onclick="toggleForms()">Zaten hesabın var mı? Giriş Yap</a></div></div>
+    </div>
+    <div id="app-container">
+        <div id="chat-app-layout">
+            <div id="sidebar">
+                <h3>Sohbetler</h3><ul id="chat-list"></ul><button onclick="startPrivateChat()">Özel Sohbet Başlat</button>
+                <h3 style="margin-top: 20px;">Çevrimiçi</h3><ul id="online-users-list"></ul>
+                <div id="user-info"><p><strong>Hoş geldin,</strong><br><span id="user-display-name"></span></p><button onclick="cikisYap()" style="width:100%; margin-top:10px; background: #f44336; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ÇIKIŞ YAP</button></div>
             </div>
-            <div id="register-form">
-                <h2>Kayıt Ol</h2>
-                <input type="text" id="registerUsername" placeholder="Kullanıcı Adı">
-                <input type="email" id="registerEmail" placeholder="E-posta">
-                <input type="password" id="registerPassword" placeholder="Şifre">
-                <button onclick="registerUser()">KAYIT OL</button>
-                <p>Zaten hesabın var mı? <a onclick="toggleForm()">Giriş yap</a></p>
+            <div id="main-chat">
+                <h2 id="chat-title"></h2>
+                <div id="mesajlar"></div>
+                <div id="input-area">
+                    <input id="mesajInput" type="text" placeholder="Mesajını yaz..."><button onclick="mesajGonder()" style="margin-left:10px; padding:10px 20px; border-radius: 5px; border:none; background:#4CAF50; color:white; cursor:pointer;">GÖNDER</button>
+                </div>
             </div>
         </div>
     </div>
-    
-    <div id="chat-app-container">
-        <div id="header">
-            <h2>Genel Sohbet (Her Dakika Sıfırlanır)</h2>
-            <div>
-                <span id="username-display" style="margin-right: 15px;"></span>
-                <button onclick="logoutUser()" style="background:#f44336; padding: 8px 15px;">ÇIKIŞ YAP</button>
-            </div>
-        </div>
-        <div id="mesajlar"></div>
-        <div id="input-area">
-            <input id="mesajInput" type="text" placeholder="Mesajını yaz...">
-            <button onclick="mesajGonder()" style="margin-left: 10px; padding: 10px 20px;">GÖNDER</button>
-        </div>
-    </div>
+    <audio id="notification-sound" src="https://www.zapsplat.com/wp-content/uploads/2015/sound-design/ui_loading_screen_generic_progress_tick_002_single.mp3" preload="auto"></audio>
 
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
-    
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyC5XS00Wu02kEVYj5thRuDXl8zhLQrRDR4",
@@ -72,115 +67,114 @@
             appId: "1:881374423023:web:8b17a88119d9123295381a",
             measurementId: "G-9FSZXNYLBD"
         };
-        
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const auth = firebase.auth();
-
+        const notificationSound = document.getElementById('notification-sound');
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
         let currentUser = null;
+        let currentChatId = null;
+        let currentChatListener = null;
 
-        function toggleForm() {
-            const loginForm = document.getElementById('login-form');
-            const registerForm = document.getElementById('register-form');
-            loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
-            registerForm.style.display = registerForm.style.display === 'none' ? 'block' : 'none';
-        }
-
-        function registerUser() {
-            const username = document.getElementById('registerUsername').value;
-            const email = document.getElementById('registerEmail').value;
-            const password = document.getElementById('registerPassword').value;
-            if (!username || !email || !password) { alert("Lütfen tüm alanları doldurun."); return; }
-            auth.createUserWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    database.ref('users/' + userCredential.user.uid).set({
-                        username: username,
-                        email: email
-                    });
-                })
-                .catch((error) => { alert("Kayıt hatası: " + error.message); });
-        }
-
-        function loginUser() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            auth.signInWithEmailAndPassword(email, password)
-                .catch((error) => { alert("Giriş hatası: " + error.message); });
-        }
-
-        function logoutUser() { auth.signOut(); }
-
-        auth.onAuthStateChanged(user => {
-            const authContainer = document.getElementById('auth-container');
-            const chatContainer = document.getElementById('chat-app-container');
-            if (user) {
-                currentUser = user;
-                authContainer.style.display = 'none';
-                chatContainer.style.display = 'flex';
-                database.ref('/users/' + user.uid).once('value').then((snapshot) => {
-                    document.getElementById('username-display').textContent = "Hoş geldin, " + snapshot.val().username;
-                });
-                loadChatMessages();
-            } else {
-                currentUser = null;
-                authContainer.style.display = 'flex';
-                chatContainer.style.display = 'none';
-            }
-        });
-
-        function mesajGonder() {
-            const mesajInput = document.getElementById('mesajInput');
-            const mesajMetni = mesajInput.value;
-            if (mesajMetni.trim() === '' || !currentUser) return;
-            database.ref('/users/' + currentUser.uid).once('value').then((snapshot) => {
+        auth.onAuthStateChanged(user => { if (user) { currentUser = user; authContainer.style.display = 'none'; appContainer.style.display = 'block'; initChatApp(); } else { if (currentUser) { database.ref(`status/${currentUser.uid}`).set({ state: 'offline', last_changed: firebase.database.ServerValue.TIMESTAMP }); } currentUser = null; authContainer.style.display = 'flex'; appContainer.style.display = 'none'; } });
+        
+        function kayitOl() { const username = document.getElementById('register-username').value; const email = document.getElementById('register-email').value; const password = document.getElementById('register-password').value; if (!username) return alert('Lütfen bir kullanıcı adı girin!'); auth.createUserWithEmailAndPassword(email, password).then(userCredential => { database.ref('users/' + userCredential.user.uid).set({ username: username, email: email }); }).catch(error => alert('Kayıt başarısız: ' + error.message)); }
+        function girisYap() { const email = document.getElementById('login-email').value; const password = document.getElementById('login-password').value; auth.signInWithEmailAndPassword(email, password).catch(error => alert('Giriş başarısız: ' + error.message)); }
+        function cikisYap() { auth.signOut(); }
+        function toggleForms() { const loginForm = document.getElementById('login-form'); const registerForm = document.getElementById('register-form'); if (loginForm.style.display === 'none') { loginForm.style.display = 'block'; registerForm.style.display = 'none'; } else { loginForm.style.display = 'none'; registerForm.style.display = 'block'; } }
+        
+        function initChatApp() {
+            database.ref('users/' + currentUser.uid).once('value').then(snapshot => {
                 const username = snapshot.val().username;
-                database.ref('genel_sohbet').push({
-                    uid: currentUser.uid,
-                    kullanici: username,
-                    metin: mesajMetni,
-                    zaman: Date.now()
-                });
-                mesajInput.value = '';
+                document.getElementById('user-display-name').textContent = username;
+                setupPresence(currentUser.uid, username);
             });
+            document.getElementById('chat-list').innerHTML = '';
+            addChatToList('public_chat', '# Genel Sohbet');
+            loadUserChats();
+            loadChat('public_chat', '# Genel Sohbet');
         }
 
-        function loadChatMessages() {
-            const mesajlarDiv = document.getElementById('mesajlar');
-            mesajlarDiv.innerHTML = '';
-            const chatRef = database.ref('genel_sohbet');
-            
-            // Yeni mesaj geldiğinde ekrana ekle
-            chatRef.on('child_added', (snapshot) => {
-                const mesaj = snapshot.val();
-                const div = document.createElement('div');
-                div.className = 'mesaj';
-                div.innerHTML = `<strong>${mesaj.kullanici}:</strong> ${mesaj.metin}`;
-                mesajlarDiv.appendChild(div);
-                mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight;
+        function setupPresence(userId, username) {
+            const userStatusRef = database.ref('/status/' + userId);
+            const isOfflineForDatabase = { state: 'offline', last_changed: firebase.database.ServerValue.TIMESTAMP, username: username };
+            const isOnlineForDatabase = { state: 'online', last_changed: firebase.database.ServerValue.TIMESTAMP, username: username };
+            database.ref('.info/connected').on('value', (snap) => {
+                if (snap.val() === false) return;
+                userStatusRef.onDisconnect().set(isOfflineForDatabase).then(() => { userStatusRef.set(isOnlineForDatabase); });
             });
-
-            // Bir mesaj silindiğinde (yani hepsi silindiğinde) ekrandan da temizle
-            chatRef.on('child_removed', (snapshot) => {
-                mesajlarDiv.innerHTML = '';
+            const onlineUsersRef = database.ref('/status').orderByChild('state').equalTo('online');
+            onlineUsersRef.on('value', (snapshot) => {
+                const onlineUsersList = document.getElementById('online-users-list');
+                onlineUsersList.innerHTML = '';
+                snapshot.forEach((childSnapshot) => {
+                    const user = childSnapshot.val();
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span class="online-dot"></span> ${user.username}`;
+                    onlineUsersList.appendChild(li);
+                });
             });
         }
         
-        document.getElementById('mesajInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') mesajGonder();
-        });
-
-        // YENİ BÖLÜM: SOHBETİ OTOMATİK TEMİZLEME
-        setInterval(function() {
-            // Firebase veritabanındaki 'genel_sohbet' alanını sil
-            database.ref('genel_sohbet').remove()
-                .then(function() {
-                    console.log("Sohbet geçmişi otomatik olarak temizlendi.");
-                })
-                .catch(function(error) {
-                    console.log("Temizleme sırasında hata oluştu: " + error.message);
+        function addChatToList(chatId, chatName) { const li = document.createElement('li'); li.textContent = chatName; li.dataset.chatid = chatId; li.onclick = () => loadChat(chatId, chatName); document.getElementById('chat-list').appendChild(li); }
+        function loadUserChats() { const userChatsRef = database.ref(`users/${currentUser.uid}/chats`); userChatsRef.on('child_added', snapshot => { addChatToList(snapshot.key, `🔒 ${snapshot.val().withUsername}`); }); }
+        
+        function loadChat(chatId, chatName) {
+            if (currentChatListener) { database.ref('chats/' + currentChatId).off('child_added', currentChatListener); }
+            currentChatId = chatId;
+            const mesajlarDiv = document.getElementById('mesajlar');
+            mesajlarDiv.innerHTML = '';
+            document.getElementById('chat-title').textContent = chatName;
+            document.querySelectorAll('#chat-list li').forEach(li => li.classList.remove('active'));
+            const activeLi = document.querySelector(`li[data-chatid="${chatId}"]`);
+            if (activeLi) { activeLi.classList.add('active'); }
+            
+            currentChatListener = database.ref('chats/' + chatId).orderByChild('zaman').on('child_added', (snapshot) => {
+                const mesaj = snapshot.val();
+                const div = document.createElement('div');
+                div.className = 'mesaj';
+                const tarih = new Date(mesaj.zaman);
+                const saat = tarih.getHours().toString().padStart(2, '0');
+                const dakika = tarih.getMinutes().toString().padStart(2, '0');
+                const zamanMetni = `${saat}:${dakika}`;
+                div.innerHTML = `<div><strong>${mesaj.username}:</strong> ${(mesaj.metin || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div><div class="timestamp">${zamanMetni}</div>`;
+                mesajlarDiv.appendChild(div);
+                mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight;
+                if (mesaj.userId !== currentUser.uid) { notificationSound.play().catch(e => {}); }
+            });
+        }
+        
+        function mesajGonder() {
+            const mesajInput = document.getElementById('mesajInput');
+            const mesaj = mesajInput.value;
+            if (mesaj.trim() && currentUser) {
+                database.ref('users/' + currentUser.uid).once('value').then(snapshot => {
+                    const username = snapshot.val().username;
+                    database.ref('chats/' + currentChatId).push({ username: username, userId: currentUser.uid, metin: mesaj, zaman: Date.now() });
+                    mesajInput.value = '';
                 });
-        }, 60000); // 60000 milisaniye = 1 dakika
-
+            }
+        }
+        
+        async function startPrivateChat() {
+            const otherUserEmail = prompt("Konuşmak istediğin kişinin E-POSTA adresini yaz:");
+            if (!otherUserEmail || otherUserEmail.toLowerCase() === currentUser.email.toLowerCase()) { alert("Geçersiz veya kendi e-posta adresinizi girdiniz."); return; }
+            const usersRef = database.ref('users');
+            const snapshot = await usersRef.orderByChild('email').equalTo(otherUserEmail.toLowerCase()).once('value');
+            if (!snapshot.exists()) { alert("Bu e-postaya sahip bir kullanıcı bulunamadı!"); return; }
+            const otherUserId = Object.keys(snapshot.val())[0];
+            const otherUserData = snapshot.val()[otherUserId];
+            const ids = [currentUser.uid, otherUserId].sort();
+            const privateChatId = `private-${ids.join('-')}`;
+            const myUsername = (await database.ref(`users/${currentUser.uid}`).once('value')).val().username;
+            await database.ref(`users/${currentUser.uid}/chats/${privateChatId}`).set({ withUsername: otherUserData.username });
+            await database.ref(`users/${otherUserId}/chats/${privateChatId}`).set({ withUsername: myUsername });
+            addChatToList(privateChatId, `🔒 ${otherUserData.username}`);
+            loadChat(privateChatId, `🔒 ${otherUserData.username}`);
+        }
+        
+        document.getElementById('mesajInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') mesajGonder(); });
     </script>
 </body>
 </html>
