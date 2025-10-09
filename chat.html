@@ -2,10 +2,9 @@
 <html>
 <head>
     <title>Girişli Sohbet Uygulaması</title>
-    <style>
+    <style>/* Stillerde değişiklik yok, aynı kalabilir */
         body { font-family: Arial, sans-serif; margin: 0; background: #f0f0f0; }
-        #app-container { display: none; } /* Başlangıçta uygulama gizli */
-        /* --- GİRİŞ EKRANI STİLLERİ --- */
+        #app-container { display: none; }
         #auth-container { height: 100vh; display: flex; justify-content: center; align-items: center; }
         .auth-box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 320px; text-align: center; }
         .auth-box h2 { margin-top: 0; color: #333; }
@@ -14,12 +13,11 @@
         .auth-box button:hover { background: #45a049; }
         .auth-box a { color: #007bff; text-decoration: none; cursor: pointer; display: block; margin-top: 15px; }
         #register-form { display: none; }
-        /* --- SOHBET EKRANI STİLLERİ (Öncekiyle aynı) --- */
         #chat-app-layout { display: flex; height: 100vh; }
         #sidebar { width: 250px; background: #333; color: white; padding: 15px; border-right: 2px solid #555; display: flex; flex-direction: column; }
         #sidebar h3 { margin-top: 0; }
-        #chat-list { list-style: none; padding: 0; margin: 10px 0; }
-        #chat-list li { padding: 10px; cursor: pointer; border-radius: 5px; margin-bottom: 5px; }
+        #chat-list { list-style: none; padding: 0; margin: 10px 0; max-height: 60%; overflow-y: auto; }
+        #chat-list li { padding: 10px; cursor: pointer; border-radius: 5px; margin-bottom: 5px; word-break: break-word; }
         #chat-list li:hover, #chat-list li.active { background: #555; }
         #user-info { margin-top: auto; font-size: 12px; word-break: break-all; }
         #main-chat { flex-grow: 1; display: flex; flex-direction: column; padding: 20px; }
@@ -31,61 +29,24 @@
     </style>
 </head>
 <body>
-
-    <!-- GİRİŞ VE KAYIT EKRANI -->
     <div id="auth-container">
         <div class="auth-box">
-            <!-- GİRİŞ FORMU -->
-            <div id="login-form">
-                <h2>Giriş Yap</h2>
-                <input type="email" id="login-email" placeholder="E-posta">
-                <input type="password" id="login-password" placeholder="Şifre">
-                <button onclick="girisYap()">GİRİŞ YAP</button>
-                <a onclick="toggleForms()">Hesabın yok mu? Kayıt Ol</a>
-            </div>
-            <!-- KAYIT FORMU -->
-            <div id="register-form">
-                <h2>Kayıt Ol</h2>
-                <input type="text" id="register-username" placeholder="Kullanıcı Adı">
-                <input type="email" id="register-email" placeholder="E-posta">
-                <input type="password" id="register-password" placeholder="Şifre">
-                <button onclick="kayitOl()">KAYIT OL</button>
-                <a onclick="toggleForms()">Zaten hesabın var mı? Giriş Yap</a>
-            </div>
+            <div id="login-form"><h2>Giriş Yap</h2><input type="email" id="login-email" placeholder="E-posta"><input type="password" id="login-password" placeholder="Şifre"><button onclick="girisYap()">GİRİŞ YAP</button><a onclick="toggleForms()">Hesabın yok mu? Kayıt Ol</a></div>
+            <div id="register-form"><h2>Kayıt Ol</h2><input type="text" id="register-username" placeholder="Kullanıcı Adı"><input type="email" id="register-email" placeholder="E-posta"><input type="password" id="register-password" placeholder="Şifre"><button onclick="kayitOl()">KAYIT OL</button><a onclick="toggleForms()">Zaten hesabın var mı? Giriş Yap</a></div>
         </div>
     </div>
-    
-    <!-- SOHBET UYGULAMASI (Giriş yapınca görünecek) -->
     <div id="app-container">
         <div id="chat-app-layout">
-            <div id="sidebar">
-                <h3>Sohbetler</h3>
-                <ul id="chat-list">
-                    <li onclick="loadChat('public_chat')" class="active" data-chatid="public_chat"># Genel Sohbet</li>
-                </ul>
-                <button onclick="startPrivateChat()">Özel Sohbet Başlat</button>
-                <div id="user-info">
-                    <p><strong>Giriş Yapan:</strong><br><span id="user-email-display"></span></p>
-                    <p><strong>Kullanıcı ID:</strong><br><span id="user-id-display"></span></p>
-                    <button onclick="cikisYap()" style="width:100%; margin-top:10px; background: #f44336;">ÇIKIŞ YAP</button>
-                </div>
-            </div>
-            <div id="main-chat">
-                <div id="mesajlar"></div>
-                <div id="input-area">
-                    <input id="mesajInput" type="text" placeholder="Mesajını yaz...">
-                    <button onclick="mesajGonder()">GÖNDER</button>
-                </div>
-            </div>
+            <div id="sidebar"><h3>Sohbetler</h3><ul id="chat-list"></ul><button onclick="startPrivateChat()">Özel Sohbet Başlat</button><div id="user-info"><p><strong>Giriş Yapan:</strong><br><span id="user-email-display"></span></p><button onclick="cikisYap()" style="width:100%; margin-top:10px; background: #f44336;">ÇIKIŞ YAP</button></div></div>
+            <div id="main-chat"><h2 id="chat-title"># Genel Sohbet</h2><div id="mesajlar"></div><div id="input-area"><input id="mesajInput" type="text" placeholder="Mesajını yaz..."><button onclick="mesajGonder()">GÖNDER</button></div></div>
         </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script> <!-- YENİ: AUTH KÜTÜPHANESİ -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
 
     <script>
-        // Senin Firebase ayarların
         const firebaseConfig = {
             apiKey: "AIzaSyC5XS00Wu02kEVYj5thRuDXl8zhLQrRDR4",
             authDomain: "chatuygulama-cbf18.firebaseapp.com",
@@ -99,91 +60,97 @@
         
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        const auth = firebase.auth(); // YENİ: AUTH SERVİSİNİ TANIMLAMA
+        const auth = firebase.auth();
 
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
         let currentUser = null;
-        let currentChatId = 'public_chat';
+        let currentChatId = null;
         let currentChatListener = null;
 
-        // KULLANICI GİRİŞ DURUMUNU KONTROL ETME
         auth.onAuthStateChanged(user => {
             if (user) {
-                // Kullanıcı giriş yapmışsa
                 currentUser = user;
                 authContainer.style.display = 'none';
                 appContainer.style.display = 'block';
-                initChatApp(); // Sohbet uygulamasını başlat
+                initChatApp();
             } else {
-                // Kullanıcı giriş yapmamışsa
                 currentUser = null;
                 authContainer.style.display = 'flex';
                 appContainer.style.display = 'none';
             }
         });
 
-        // YENİ FONKSİYONLAR: KAYIT OL, GİRİŞ YAP, ÇIKIŞ YAP
         function kayitOl() {
             const username = document.getElementById('register-username').value;
             const email = document.getElementById('register-email').value;
             const password = document.getElementById('register-password').value;
-
             if (!username) return alert('Lütfen bir kullanıcı adı girin!');
-
             auth.createUserWithEmailAndPassword(email, password)
                 .then(userCredential => {
-                    // Kullanıcı kaydı başarılı, şimdi veritabanına kullanıcı adını kaydedelim
-                    database.ref('users/' + userCredential.user.uid).set({
-                        username: username,
-                        email: email
-                    });
-                })
-                .catch(error => {
-                    alert('Kayıt başarısız: ' + error.message);
-                });
+                    database.ref('users/' + userCredential.user.uid).set({ username: username, email: email });
+                }).catch(error => alert('Kayıt başarısız: ' + error.message));
         }
 
         function girisYap() {
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
-            auth.signInWithEmailAndPassword(email, password)
-                .catch(error => {
-                    alert('Giriş başarısız: ' + error.message);
-                });
+            auth.signInWithEmailAndPassword(email, password).catch(error => alert('Giriş başarısız: ' + error.message));
         }
 
-        function cikisYap() {
-            auth.signOut();
-        }
-
+        function cikisYap() { auth.signOut(); }
         function toggleForms() {
             const loginForm = document.getElementById('login-form');
             const registerForm = document.getElementById('register-form');
-            if (loginForm.style.display !== 'none') {
-                loginForm.style.display = 'none';
-                registerForm.style.display = 'block';
-            } else {
-                loginForm.style.display = 'block';
-                registerForm.style.display = 'none';
-            }
+            loginForm.style.display = (loginForm.style.display !== 'none') ? 'none' : 'block';
+            registerForm.style.display = (registerForm.style.display !== 'none') ? 'none' : 'block';
         }
         
-        // --- SOHBET UYGULAMASI MANTIĞI ---
+        // --- GÜNCELLENMİŞ SOHBET MANTIĞI ---
+
         function initChatApp() {
             document.getElementById('user-email-display').textContent = currentUser.email;
-            document.getElementById('user-id-display').textContent = currentUser.uid; // Artık kalıcı bir ID'miz var!
-            loadChat('public_chat');
+            document.getElementById('chat-list').innerHTML = ''; // Listeyi temizle
+            // Genel sohbeti her zaman ekle
+            addChatToList('public_chat', '# Genel Sohbet', true);
+            // Kullanıcının özel sohbetlerini yükle
+            loadUserChats();
+            loadChat('public_chat', '# Genel Sohbet');
         }
 
-        // Bu fonksiyonlar öncekiyle 거의 aynı, sadece currentUser.uid kullanıyor
-        function loadChat(chatId) {
-            // ... (şimdilik basit tutuyoruz, bu kısmı 2. adımda geliştireceğiz)
+        function addChatToList(chatId, chatName, isActive = false) {
+            const chatList = document.getElementById('chat-list');
+            // Eğer bu sohbet zaten listede varsa ekleme
+            if (document.querySelector(`li[data-chatid="${chatId}"]`)) return;
+
+            const li = document.createElement('li');
+            li.textContent = chatName;
+            li.dataset.chatid = chatId;
+            if (isActive) li.classList.add('active');
+            li.onclick = () => loadChat(chatId, chatName);
+            chatList.appendChild(li);
+        }
+
+        // YENİ: Kullanıcının kayıtlı sohbetlerini veritabanından çeker
+        function loadUserChats() {
+            const userChatsRef = database.ref(`users/${currentUser.uid}/chats`);
+            userChatsRef.on('child_added', snapshot => {
+                const chatInfo = snapshot.val();
+                addChatToList(snapshot.key, chatInfo.withUsername);
+            });
+        }
+        
+        function loadChat(chatId, chatName) {
             if (currentChatListener) database.ref('chats/' + currentChatId).off('child_added', currentChatListener);
+            
             currentChatId = chatId;
             document.getElementById('mesajlar').innerHTML = '';
+            document.getElementById('chat-title').textContent = chatName;
+
+            document.querySelectorAll('#chat-list li').forEach(li => li.classList.remove('active'));
+            document.querySelector(`li[data-chatid="${chatId}"]`).classList.add('active');
             
-            currentChatListener = database.ref('chats/' + chatId).on('child_added', (snapshot) => {
+            currentChatListener = database.ref('chats/' + chatId).orderByChild('zaman').on('child_added', (snapshot) => {
                 const mesaj = snapshot.val();
                 const div = document.createElement('div');
                 div.className = 'mesaj';
@@ -197,7 +164,6 @@
             const mesajInput = document.getElementById('mesajInput');
             const mesaj = mesajInput.value;
             if (mesaj && currentUser) {
-                // Kullanıcı adını veritabanından çekmemiz gerekiyor
                 database.ref('users/' + currentUser.uid).once('value').then(snapshot => {
                     const username = snapshot.val().username;
                     database.ref('chats/' + currentChatId).push({
@@ -211,8 +177,41 @@
             }
         }
         
-        function startPrivateChat() {
-            alert('Bu özellik bir sonraki adımda geliştirilecek!');
+        // YENİ VE GELİŞMİŞ: E-posta ile özel sohbet başlatır
+        async function startPrivateChat() {
+            const otherUserEmail = prompt("Konuşmak istediğin kişinin E-POSTA adresini yaz:");
+            if (!otherUserEmail || otherUserEmail === currentUser.email) {
+                alert("Geçersiz veya kendi e-posta adresinizi girdiniz.");
+                return;
+            }
+
+            // Veritabanında bu e-postaya sahip kullanıcıyı bul
+            const usersRef = database.ref('users');
+            const snapshot = await usersRef.orderByChild('email').equalTo(otherUserEmail).once('value');
+            
+            if (!snapshot.exists()) {
+                alert("Bu e-postaya sahip bir kullanıcı bulunamadı!");
+                return;
+            }
+
+            const otherUserId = Object.keys(snapshot.val())[0];
+            const otherUserData = snapshot.val()[otherUserId];
+            
+            const ids = [currentUser.uid, otherUserId].sort();
+            const privateChatId = `private-${ids.join('-')}`;
+            
+            // Her iki kullanıcının da profiline bu sohbeti kaydet
+            const myUsername = (await database.ref(`users/${currentUser.uid}`).once('value')).val().username;
+
+            const chatInfoForMe = { withUsername: otherUserData.username, withUserId: otherUserId };
+            const chatInfoForThem = { withUsername: myUsername, withUserId: currentUser.uid };
+
+            await database.ref(`users/${currentUser.uid}/chats/${privateChatId}`).set(chatInfoForMe);
+            await database.ref(`users/${otherUserId}/chats/${privateChatId}`).set(chatInfoForThem);
+            
+            // Sohbeti listeye ekle ve yükle
+            addChatToList(privateChatId, otherUserData.username);
+            loadChat(privateChatId, otherUserData.username);
         }
 
         document.getElementById('mesajInput').addEventListener('keypress', (e) => {
