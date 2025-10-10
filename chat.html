@@ -35,17 +35,7 @@
 </head>
 <body>
     <div id="auth-container">
-        <div class="auth-box">
-            <div id="login-form">
-                <h2>Giriş Yap</h2><input type="email" id="login-email" placeholder="E-posta"><input type="password" id="login-password" placeholder="Şifre"><button onclick="girisYap()">GİRİŞ YAP</button>
-                <a onclick="toggleForms()">Hesabın yok mu? Kayıt Ol</a>
-                <a onclick="signInAnonymously()" style="margin-top: 25px; color: #555;">veya Misafir Olarak Devam Et</a>
-            </div>
-            <div id="register-form">
-                <h2>Kayıt Ol</h2><input type="text" id="register-username" placeholder="Kullanıcı Adı"><input type="email" id="register-email" placeholder="E-posta"><input type="password" id="register-password" placeholder="Şifre"><button onclick="kayitOl()">KAYIT OL</button>
-                <a onclick="toggleForms()">Zaten hesabın var mı? Giriş Yap</a>
-            </div>
-        </div>
+        <div class="auth-box"><div id="login-form"><h2>Giriş Yap</h2><input type="email" id="login-email" placeholder="E-posta"><input type="password" id="login-password" placeholder="Şifre"><button onclick="girisYap()">GİRİŞ YAP</button><a onclick="toggleForms()">Hesabın yok mu? Kayıt Ol</a><a onclick="signInAnonymously()" style="margin-top: 25px; color: #555;">veya Misafir Olarak Devam Et</a></div><div id="register-form"><h2>Kayıt Ol</h2><input type="text" id="register-username" placeholder="Kullanıcı Adı"><input type="email" id="register-email" placeholder="E-posta"><input type="password" id="register-password" placeholder="Şifre"><button onclick="kayitOl()">KAYIT OL</button><a onclick="toggleForms()">Zaten hesabın var mı? Giriş Yap</a></div></div>
     </div>
     <div id="app-container">
         <div id="chat-app-layout">
@@ -100,13 +90,7 @@
         let currentChatId = null;
         let currentChatListener = null;
 
-        function copyMyId() {
-            if (!currentUser || currentUser.isAnonymous) return;
-            navigator.clipboard.writeText(currentUser.uid).then(() => {
-                alert("Kullanıcı ID'n panoya kopyalandı!");
-            });
-        }
-        
+        function copyMyId() { if (!currentUser || currentUser.isAnonymous) return; navigator.clipboard.writeText(currentUser.uid).then(() => { alert("Kullanıcı ID'n panoya kopyalandı!"); }); }
         function signInAnonymously() { auth.signInAnonymously().catch(error => alert("Anonim giriş başarısız: " + error.message)); }
 
         auth.onAuthStateChanged(user => {
@@ -145,31 +129,8 @@
             }
         }
         
-        function mesajGonder() {
-            const mesajInput = document.getElementById('mesajInput');
-            const mesaj = mesajInput.value;
-            if (mesaj.trim() && currentUser) {
-                let username = document.getElementById('user-display-name').textContent;
-                database.ref('chats/' + currentChatId).push({
-                    username: username,
-                    userId: currentUser.uid,
-                    metin: mesaj,
-                    zaman: Date.now()
-                });
-                mesajInput.value = '';
-            }
-        }
-        
-        function kayitOl() {
-            const username = document.getElementById('register-username').value;
-            const email = document.getElementById('register-email').value;
-            const password = document.getElementById('register-password').value;
-            if (!username) return alert('Lütfen bir kullanıcı adı girin!');
-            auth.createUserWithEmailAndPassword(email, password).then(userCredential => {
-                database.ref('users/' + userCredential.user.uid).set({ username: username, email: email });
-            }).catch(error => alert('Kayıt başarısız: ' + error.message));
-        }
-
+        function mesajGonder() { const mesajInput = document.getElementById('mesajInput'); const mesaj = mesajInput.value; if (mesaj.trim() && currentUser) { let username = document.getElementById('user-display-name').textContent; database.ref('chats/' + currentChatId).push({ username: username, userId: currentUser.uid, metin: mesaj, zaman: Date.now() }); mesajInput.value = ''; } }
+        function kayitOl() { const username = document.getElementById('register-username').value; const email = document.getElementById('register-email').value; const password = document.getElementById('register-password').value; if (!username) return alert('Lütfen bir kullanıcı adı girin!'); auth.createUserWithEmailAndPassword(email, password).then(userCredential => { database.ref('users/' + userCredential.user.uid).set({ username: username, email: email }); }).catch(error => alert('Kayıt başarısız: ' + error.message)); }
         function girisYap() { const email = document.getElementById('login-email').value; const password = document.getElementById('login-password').value; auth.signInWithEmailAndPassword(email, password).catch(error => alert('Giriş başarısız: ' + error.message)); }
         function cikisYap() { auth.signOut(); }
         function toggleForms() { const loginForm = document.getElementById('login-form'); const registerForm = document.getElementById('register-form'); if (loginForm.style.display === 'none') { loginForm.style.display = 'block'; registerForm.style.display = 'none'; } else { loginForm.style.display = 'none'; registerForm.style.display = 'block'; } }
@@ -195,20 +156,11 @@
             });
         }
         
-        function addChatToList(chatId, chatName) {
-            const chatList = document.getElementById('chat-list');
-            if (document.querySelector(`li[data-chatid="${chatId}"]`)) return;
-            const li = document.createElement('li');
-            li.textContent = chatName;
-            li.dataset.chatid = chatId;
-            li.onclick = () => loadChat(chatId, chatName);
-            chatList.appendChild(li);
-        }
-        
+        function addChatToList(chatId, chatName) { const li = document.createElement('li'); li.textContent = chatName; li.dataset.chatid = chatId; li.onclick = () => loadChat(chatId, chatName); document.getElementById('chat-list').appendChild(li); }
         function loadUserChats() { const userChatsRef = database.ref(`users/${currentUser.uid}/chats`); userChatsRef.on('child_added', snapshot => { addChatToList(snapshot.key, `🔒 ${snapshot.val().withUsername}`); }); }
         
         function loadChat(chatId, chatName) {
-            if (currentChatListener) { database.ref('chats/' + currentChatId).off('child_added', currentChatListener); }
+            if (currentChatListener) { database.ref('chats/' + currentChatId).off(); } // Önceki dinleyicileri tamamen kapat
             currentChatId = chatId;
             const mesajlarDiv = document.getElementById('mesajlar');
             mesajlarDiv.innerHTML = '';
@@ -231,25 +183,24 @@
                 mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight;
                 if (mesaj.userId !== currentUser.uid) { notificationSound.play().catch(e => {}); }
             });
+            // Genel sohbet silindiğinde ekranı temizle
+            if (chatId === 'public_chat') {
+                chatRef.on('child_removed', () => {
+                    mesajlarDiv.innerHTML = '';
+                });
+            }
         }
         
-        async function startPrivateChat() {
-            const otherUserId = prompt("Konuşmak istediğin kişinin KULLANICI ID'sini yaz:");
-            if (!otherUserId || otherUserId === currentUser.uid) { alert("Geçersiz veya kendi ID'nizi girdiniz."); return; }
-            const userRef = database.ref('users/' + otherUserId);
-            const snapshot = await userRef.once('value');
-            if (!snapshot.exists()) { alert("Bu ID'ye sahip bir kullanıcı bulunamadı!"); return; }
-            const otherUserData = snapshot.val();
-            const ids = [currentUser.uid, otherUserId].sort();
-            const privateChatId = `private-${ids.join('-')}`;
-            const myUsername = (await database.ref(`users/${currentUser.uid}`).once('value')).val().username;
-            await database.ref(`users/${currentUser.uid}/chats/${privateChatId}`).set({ withUsername: otherUserData.username });
-            await database.ref(`users/${otherUserId}/chats/${privateChatId}`).set({ withUsername: myUsername });
-            addChatToList(privateChatId, `🔒 ${otherUserData.username}`);
-            loadChat(privateChatId, `🔒 ${otherUserData.username}`);
-        }
-        
+        async function startPrivateChat() { const otherUserId = prompt("Konuşmak istediğin kişinin KULLANICI ID'sini yaz:"); if (!otherUserId || otherUserId === currentUser.uid) { alert("Geçersiz veya kendi ID'nizi girdiniz."); return; } const userRef = database.ref('users/' + otherUserId); const snapshot = await userRef.once('value'); if (!snapshot.exists()) { alert("Bu ID'ye sahip bir kullanıcı bulunamadı!"); return; } const otherUserData = snapshot.val(); const ids = [currentUser.uid, otherUserId].sort(); const privateChatId = `private-${ids.join('-')}`; const myUsername = (await database.ref(`users/${currentUser.uid}`).once('value')).val().username; await database.ref(`users/${currentUser.uid}/chats/${privateChatId}`).set({ withUsername: otherUserData.username }); await database.ref(`users/${otherUserId}/chats/${privateChatId}`).set({ withUsername: myUsername }); addChatToList(privateChatId, `🔒 ${otherUserData.username}`); loadChat(privateChatId, `🔒 ${otherUserData.username}`); }
         document.getElementById('mesajInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') mesajGonder(); });
+
+        // YENİDEN EKLENDİ: GENEL SOHBETİ HER 10 DAKİKADA BİR TEMİZLE
+        setInterval(function() {
+            database.ref('chats/public_chat').remove()
+                .then(() => { console.log("Genel sohbet geçmişi otomatik olarak temizlendi."); })
+                .catch((error) => { console.log("Temizleme hatası: " + error.message); });
+        }, 600000); // 600000 milisaniye = 10 dakika
+
     </script>
 </body>
 </html>
