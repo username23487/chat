@@ -22,7 +22,6 @@
         #my-id-container { background: #222; padding: 8px; border-radius: 5px; margin-top: 15px; cursor: pointer; }
         #my-id-container:hover { background: #444; }
         #main-chat { flex-grow: 1; display: flex; flex-direction: column; padding: 20px; }
-        /* DÜZELTİLDİ: Başlık alanı */
         #chat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;}
         #chat-title { margin-top: 0; margin-bottom: 0; }
         #clear-chat-button { background: #777; color: white; border: none; padding: 5px 10px; font-size: 12px; border-radius: 5px; cursor: pointer; }
@@ -43,38 +42,16 @@
     </div>
     <div id="app-container">
         <div id="chat-app-layout">
-            <div id="sidebar">
-                <h3>Sohbetler</h3><ul id="chat-list"></ul>
-                <div id="member-features">
-                    <button onclick="startPrivateChat()">Özel Sohbet Başlat</button>
-                    <h3 style="margin-top: 20px;">Çevrimiçi</h3><ul id="online-users-list"></ul>
-                    <div id="my-id-container" onclick="copyMyId()">
-                        <p style="margin:0; font-weight: bold;">Benim ID'm (Tıkla Kopyala):</p>
-                        <p id="my-id-display" style="word-break: break-all; margin: 5px 0 0;"></p>
-                    </div>
-                </div>
-                <div id="user-info">
-                    <p><strong>Hoş geldin,</strong><br><span id="user-display-name"></span></p>
-                    <button onclick="cikisYap()" style="width:100%; margin-top:10px; background: #f44336; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ÇIKIŞ YAP</button>
-                </div>
-            </div>
-            <!-- DÜZELTİLMİŞ HTML YAPISI -->
-            <div id="main-chat">
-                <div id="chat-header">
-                    <h2 id="chat-title"></h2>
-                    <button id="clear-chat-button" onclick="clearChatScreen()">Ekranı Temizle</button>
-                </div>
-                <div id="mesajlar"></div>
-                <div id="input-area">
-                    <input id="mesajInput" type="text" placeholder="Mesajını yaz..."><button onclick="mesajGonder()" style="margin-left:10px; padding:10px 20px; border-radius: 5px; border:none; background:#4CAF50; color:white; cursor:pointer;">GÖNDER</button>
-                </div>
-            </div>
+            <div id="sidebar"><h3>Sohbetler</h3><ul id="chat-list"></ul><div id="member-features"><button onclick="startPrivateChat()">Özel Sohbet Başlat</button><h3 style="margin-top: 20px;">Çevrimiçi</h3><ul id="online-users-list"></ul><div id="my-id-container" onclick="copyMyId()"><p style="margin:0; font-weight: bold;">Benim ID'm (Tıkla Kopyala):</p><p id="my-id-display" style="word-break: break-all; margin: 5px 0 0;"></p></div></div><div id="user-info"><p><strong>Hoş geldin,</strong><br><span id="user-display-name"></span></p><button onclick="cikisYap()" style="width:100%; margin-top:10px; background: #f44336; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ÇIKIŞ YAP</button></div></div>
+            <div id="main-chat"><div id="chat-header"><h2 id="chat-title"></h2><button id="clear-chat-button" onclick="clearChatScreen()">Ekranı Temizle</button></div><div id="mesajlar"></div><div id="input-area"><input id="mesajInput" type="text" placeholder="Mesajını yaz..."><button onclick="mesajGonder()" style="margin-left:10px; padding:10px 20px; border-radius: 5px; border:none; background:#4CAF50; color:white; cursor:pointer;">GÖNDER</button></div></div>
         </div>
     </div>
     <audio id="notification-sound" src="https://www.zapsplat.com/wp-content/uploads/2015/sound-design/ui_loading_screen_generic_progress_tick_002_single.mp3" preload="auto"></audio>
 
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     <script>
-        // --- JAVASCRIPT BÖLÜMÜNDE DEĞİŞİKLİK YOK, ÖNCEKİ GİBİ ÇALIŞIYOR ---
         const firebaseConfig = { apiKey: "AIzaSyC5XS00Wu02kEVYj5thRuDXl8zhLQrRDR4", authDomain: "chatuygulama-cbf18.firebaseapp.com", databaseURL: "https://chatuygulama-cbf18-default-rtdb.firebaseio.com", projectId: "chatuygulama-cbf18", storageBucket: "chatuygulama-cbf18.firebasestorage.app", messagingSenderId: "881374423023", appId: "1:881374423023:web:8b17a88119d9123295381a", measurementId: "G-9FSZXNYLBD" };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
@@ -92,7 +69,18 @@
         auth.onAuthStateChanged(user => { if (user) { currentUser = user; authContainer.style.display = 'none'; appContainer.style.display = 'block'; initChatApp(user.isAnonymous); } else { if (currentUser && !currentUser.isAnonymous) { database.ref(`status/${currentUser.uid}`).set({ state: 'offline', last_changed: firebase.database.ServerValue.TIMESTAMP }); } currentUser = null; authContainer.style.display = 'flex'; appContainer.style.display = 'none'; } });
         function initChatApp(isAnonymous) { const memberFeatures = document.getElementById('member-features'); document.getElementById('chat-list').innerHTML = ''; addChatToList('public_chat', '# Genel Sohbet'); if (isAnonymous) { const randomId = Math.floor(1000 + Math.random() * 9000); document.getElementById('user-display-name').textContent = `Misafir-${randomId}`; memberFeatures.style.display = 'none'; loadChat('public_chat', '# Genel Sohbet'); } else { memberFeatures.style.display = 'block'; document.getElementById('my-id-display').textContent = currentUser.uid; database.ref('users/' + currentUser.uid).once('value').then(snapshot => { const username = snapshot.val().username; document.getElementById('user-display-name').textContent = username; setupPresence(currentUser.uid, username); }); loadUserChats(); loadChat('public_chat', '# Genel Sohbet'); } }
         function mesajGonder() { const mesajInput = document.getElementById('mesajInput'); const mesaj = mesajInput.value; if (mesaj.trim() && currentUser) { let username = document.getElementById('user-display-name').textContent; database.ref('chats/' + currentChatId).push({ username: username, userId: currentUser.uid, metin: mesaj, zaman: Date.now() }); mesajInput.value = ''; } }
-        function kayitOl() { const username = document.getElementById('register-username').value; const email = document.getElementById('register-email').value; const password = document.getElementById('register-password').value; if (!username) return alert('Lütfen bir kullanıcı adı girin!'); auth.createUserWithEmailAndPassword(email, password).then(userCredential => { database.ref('users/' + userCredential.user.uid).set({ username: username, email: email }); }).catch(error => alert('Kayıt başarısız: ' + error.message)); }
+        
+        // --- BU FONKSİYON DÜZELTİLDİ ---
+        function kayitOl() {
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            if (!username) return alert('Lütfen bir kullanıcı adı girin!');
+            auth.createUserWithEmailAndPassword(email, password).then(userCredential => {
+                database.ref('users/' + userCredential.user.uid).set({ username: username, email: email });
+            }).catch(error => alert('Kayıt başarısız: ' + error.message));
+        }
+
         function girisYap() { const email = document.getElementById('login-email').value; const password = document.getElementById('login-password').value; auth.signInWithEmailAndPassword(email, password).catch(error => alert('Giriş başarısız: ' + error.message)); }
         function cikisYap() { auth.signOut(); }
         function toggleForms() { const loginForm = document.getElementById('login-form'); const registerForm = document.getElementById('register-form'); if (loginForm.style.display === 'none') { loginForm.style.display = 'block'; registerForm.style.display = 'none'; } else { loginForm.style.display = 'none'; registerForm.style.display = 'block'; } }
