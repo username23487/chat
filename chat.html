@@ -191,12 +191,12 @@
         async function startPrivateChat() { const otherUserId = prompt("Konuşmak istediğin kişinin KULLANICI ID'sini yaz:"); if (!otherUserId || otherUserId === currentUser.uid) { alert("Geçersiz veya kendi ID'nizi girdiniz."); return; } const userRef = database.ref('users/' + otherUserId); const snapshot = await userRef.once('value'); if (!snapshot.exists()) { alert("Bu ID'ye sahip bir kullanıcı bulunamadı!"); return; } const otherUserData = snapshot.val(); const ids = [currentUser.uid, otherUserId].sort(); const privateChatId = `private-${ids.join('-')}`; const myUsername = (await database.ref(`users/${currentUser.uid}`).once('value')).val().username; await database.ref(`users/${currentUser.uid}/chats/${privateChatId}`).set({ withUsername: otherUserData.username }); await database.ref(`users/${otherUserId}/chats/${privateChatId}`).set({ withUsername: myUsername }); addChatToList(privateChatId, `🔒 ${otherUserData.username}`); loadChat(privateChatId, `🔒 ${otherUserData.username}`); }
         document.getElementById('mesajInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') mesajGonder(); });
 
-        // GENEL SOHBETİ HER 1 DAKİKADA BİR TEMİZLE
+        // GENEL SOHBETİ HER 5 DAKİKADA BİR TEMİZLE
         setInterval(function() {
             database.ref('chats/public_chat').remove()
                 .then(() => { console.log("Genel sohbet geçmişi otomatik olarak temizlendi."); })
                 .catch((error) => { console.log("Temizleme hatası: " + error.message); });
-        }, 60000); // 60000 milisaniye = 1 dakika
+        }, 300000); // 300000 milisaniye = 5 dakika
 
     </script>
 </body>
