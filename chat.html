@@ -160,7 +160,7 @@
         function loadUserChats() { const userChatsRef = database.ref(`users/${currentUser.uid}/chats`); userChatsRef.on('child_added', snapshot => { addChatToList(snapshot.key, `🔒 ${snapshot.val().withUsername}`); }); }
         
         function loadChat(chatId, chatName) {
-            if (currentChatListener) { database.ref('chats/' + currentChatId).off(); } // Önceki dinleyicileri tamamen kapat
+            if (currentChatListener) { database.ref('chats/' + currentChatId).off(); }
             currentChatId = chatId;
             const mesajlarDiv = document.getElementById('mesajlar');
             mesajlarDiv.innerHTML = '';
@@ -183,23 +183,20 @@
                 mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight;
                 if (mesaj.userId !== currentUser.uid) { notificationSound.play().catch(e => {}); }
             });
-            // Genel sohbet silindiğinde ekranı temizle
             if (chatId === 'public_chat') {
-                chatRef.on('child_removed', () => {
-                    mesajlarDiv.innerHTML = '';
-                });
+                chatRef.on('child_removed', () => { mesajlarDiv.innerHTML = ''; });
             }
         }
         
         async function startPrivateChat() { const otherUserId = prompt("Konuşmak istediğin kişinin KULLANICI ID'sini yaz:"); if (!otherUserId || otherUserId === currentUser.uid) { alert("Geçersiz veya kendi ID'nizi girdiniz."); return; } const userRef = database.ref('users/' + otherUserId); const snapshot = await userRef.once('value'); if (!snapshot.exists()) { alert("Bu ID'ye sahip bir kullanıcı bulunamadı!"); return; } const otherUserData = snapshot.val(); const ids = [currentUser.uid, otherUserId].sort(); const privateChatId = `private-${ids.join('-')}`; const myUsername = (await database.ref(`users/${currentUser.uid}`).once('value')).val().username; await database.ref(`users/${currentUser.uid}/chats/${privateChatId}`).set({ withUsername: otherUserData.username }); await database.ref(`users/${otherUserId}/chats/${privateChatId}`).set({ withUsername: myUsername }); addChatToList(privateChatId, `🔒 ${otherUserData.username}`); loadChat(privateChatId, `🔒 ${otherUserData.username}`); }
         document.getElementById('mesajInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') mesajGonder(); });
 
-        // YENİDEN EKLENDİ: GENEL SOHBETİ HER 10 DAKİKADA BİR TEMİZLE
+        // GENEL SOHBETİ HER 1 DAKİKADA BİR TEMİZLE
         setInterval(function() {
             database.ref('chats/public_chat').remove()
                 .then(() => { console.log("Genel sohbet geçmişi otomatik olarak temizlendi."); })
                 .catch((error) => { console.log("Temizleme hatası: " + error.message); });
-        }, 600000); // 600000 milisaniye = 10 dakika
+        }, 60000); // 60000 milisaniye = 1 dakika
 
     </script>
 </body>
