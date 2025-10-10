@@ -22,10 +22,9 @@
         #my-id-container { background: #222; padding: 8px; border-radius: 5px; margin-top: 15px; cursor: pointer; }
         #my-id-container:hover { background: #444; }
         #main-chat { flex-grow: 1; display: flex; flex-direction: column; padding: 20px; }
-        /* YENİ: Başlık alanını düzenledik */
-        #chat-title-area { display: flex; justify-content: space-between; align-items: center; }
-        #chat-title { margin-top: 0; }
-        /* YENİ: Temizle butonu stili */
+        /* DÜZELTİLDİ: Başlık alanı */
+        #chat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;}
+        #chat-title { margin-top: 0; margin-bottom: 0; }
         #clear-chat-button { background: #777; color: white; border: none; padding: 5px 10px; font-size: 12px; border-radius: 5px; cursor: pointer; }
         #clear-chat-button:hover { background: #555; }
         #mesajlar { background: white; flex-grow: 1; overflow-y: scroll; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
@@ -40,53 +39,42 @@
 </head>
 <body>
     <div id="auth-container">
-        <!-- Giriş/Kayıt HTML'i aynı -->
+        <div class="auth-box"><div id="login-form"><h2>Giriş Yap</h2><input type="email" id="login-email" placeholder="E-posta"><input type="password" id="login-password" placeholder="Şifre"><button onclick="girisYap()">GİRİŞ YAP</button><a onclick="toggleForms()">Hesabın yok mu? Kayıt Ol</a><a onclick="signInAnonymously()" style="margin-top: 25px; color: #555;">veya Misafir Olarak Devam Et</a></div><div id="register-form"><h2>Kayıt Ol</h2><input type="text" id="register-username" placeholder="Kullanıcı Adı"><input type="email" id="register-email" placeholder="E-posta"><input type="password" id="register-password" placeholder="Şifre"><button onclick="kayitOl()">KAYIT OL</button><a onclick="toggleForms()">Zaten hesabın var mı? Giriş Yap</a></div></div>
     </div>
     <div id="app-container">
         <div id="chat-app-layout">
             <div id="sidebar">
-                <!-- Sidebar HTML'i aynı -->
+                <h3>Sohbetler</h3><ul id="chat-list"></ul>
+                <div id="member-features">
+                    <button onclick="startPrivateChat()">Özel Sohbet Başlat</button>
+                    <h3 style="margin-top: 20px;">Çevrimiçi</h3><ul id="online-users-list"></ul>
+                    <div id="my-id-container" onclick="copyMyId()">
+                        <p style="margin:0; font-weight: bold;">Benim ID'm (Tıkla Kopyala):</p>
+                        <p id="my-id-display" style="word-break: break-all; margin: 5px 0 0;"></p>
+                    </div>
+                </div>
+                <div id="user-info">
+                    <p><strong>Hoş geldin,</strong><br><span id="user-display-name"></span></p>
+                    <button onclick="cikisYap()" style="width:100%; margin-top:10px; background: #f44336; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ÇIKIŞ YAP</button>
+                </div>
             </div>
+            <!-- DÜZELTİLMİŞ HTML YAPISI -->
             <div id="main-chat">
-                <!-- YENİ: Başlık alanı ve temizle butonu -->
-                <div id="chat-title-area">
+                <div id="chat-header">
                     <h2 id="chat-title"></h2>
                     <button id="clear-chat-button" onclick="clearChatScreen()">Ekranı Temizle</button>
                 </div>
                 <div id="mesajlar"></div>
                 <div id="input-area">
-                    <!-- Input alanı HTML'i aynı -->
+                    <input id="mesajInput" type="text" placeholder="Mesajını yaz..."><button onclick="mesajGonder()" style="margin-left:10px; padding:10px 20px; border-radius: 5px; border:none; background:#4CAF50; color:white; cursor:pointer;">GÖNDER</button>
                 </div>
             </div>
         </div>
     </div>
-    <!-- Tam HTML ve JS'i aşağıya ekliyorum -->
-    <div id="auth-container">
-        <div class="auth-box"><div id="login-form"><h2>Giriş Yap</h2><input type="email" id="login-email" placeholder="E-posta"><input type="password" id="login-password" placeholder="Şifre"><button onclick="girisYap()">GİRİŞ YAP</button><a onclick="toggleForms()">Hesabın yok mu? Kayıt Ol</a><a onclick="signInAnonymously()" style="margin-top: 25px; color: #555;">veya Misafir Olarak Devam Et</a></div><div id="register-form"><h2>Kayıt Ol</h2><input type="text" id="register-username" placeholder="Kullanıcı Adı"><input type="email" id="register-email" placeholder="E-posta"><input type="password" id="register-password" placeholder="Şifre"><button onclick="kayitOl()">KAYIT OL</button><a onclick="toggleForms()">Zaten hesabın var mı? Giriş Yap</a></div></div>
-    </div>
-    <div id="app-container">
-        <div id="chat-app-layout">
-            <div id="sidebar"><h3>Sohbetler</h3><ul id="chat-list"></ul><div id="member-features"><button onclick="startPrivateChat()">Özel Sohbet Başlat</button><h3 style="margin-top: 20px;">Çevrimiçi</h3><ul id="online-users-list"></ul><div id="my-id-container" onclick="copyMyId()"><p style="margin:0; font-weight: bold;">Benim ID'm (Tıkla Kopyala):</p><p id="my-id-display" style="word-break: break-all; margin: 5px 0 0;"></p></div></div><div id="user-info"><p><strong>Hoş geldin,</strong><br><span id="user-display-name"></span></p><button onclick="cikisYap()" style="width:100%; margin-top:10px; background: #f44336; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ÇIKIŞ YAP</button></div></div>
-            <div id="main-chat"><div id="chat-title-area"><h2 id="chat-title"></h2><button id="clear-chat-button" onclick="clearChatScreen()">Ekranı Temizle</button></div><div id="mesajlar"></div><div id="input-area"><input id="mesajInput" type="text" placeholder="Mesajını yaz..."><button onclick="mesajGonder()" style="margin-left:10px; padding:10px 20px; border-radius: 5px; border:none; background:#4CAF50; color:white; cursor:pointer;">GÖNDER</button></div></div>
-        </div>
-    </div>
     <audio id="notification-sound" src="https://www.zapsplat.com/wp-content/uploads/2015/sound-design/ui_loading_screen_generic_progress_tick_002_single.mp3" preload="auto"></audio>
 
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     <script>
-        // ... (Config ve diğer değişkenler aynı) ...
-        
-        // YENİ: Sadece ekranı temizleyen fonksiyon
-        function clearChatScreen() {
-            document.getElementById('mesajlar').innerHTML = '';
-        }
-
-        // ... (Diğer fonksiyonlar aynı, sadece sondaki setInterval kaldırıldı) ...
-    </script>
-    <!-- Tam JS'i aşağıya ekliyorum -->
-    <script>
+        // --- JAVASCRIPT BÖLÜMÜNDE DEĞİŞİKLİK YOK, ÖNCEKİ GİBİ ÇALIŞIYOR ---
         const firebaseConfig = { apiKey: "AIzaSyC5XS00Wu02kEVYj5thRuDXl8zhLQrRDR4", authDomain: "chatuygulama-cbf18.firebaseapp.com", databaseURL: "https://chatuygulama-cbf18-default-rtdb.firebaseio.com", projectId: "chatuygulama-cbf18", storageBucket: "chatuygulama-cbf18.firebasestorage.app", messagingSenderId: "881374423023", appId: "1:881374423023:web:8b17a88119d9123295381a", measurementId: "G-9FSZXNYLBD" };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
