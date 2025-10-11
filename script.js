@@ -16,7 +16,7 @@ const imageUploadInput = document.getElementById('image-upload-input');
 const videoCallButton = document.getElementById('video-call-button');
 const modalOverlay = document.getElementById('modal-overlay');
 
-// YENİ: Ayarlar Modal Elementleri
+// KULLANICI ADI DEĞİŞTİRME İÇİN YENİ ELEMENTLER
 const settingsModal = document.getElementById('settings-modal');
 const newUsernameInput = document.getElementById('new-username'); 
 
@@ -25,13 +25,17 @@ let currentChatId = null;
 let typingTimeout = null;
 let blockList = {};
 
+// YENİ: Yönetici e-postalarını burada tanımlıyoruz. Admin olarak girmek için bu e-posta ile kayıt olmalısın.
+const adminEmails = ["admin@gmail.com"];
+let isAdmin = false; // Kullanıcının admin olup olmadığını tutacak değişken
+
 const emojis = ['😀', '😂', '😊', '😍', '🤔', '😎', '😭', '😡', '👍', '👎', '❤️', '🔥', '🎉', '👋'];
 
-function initEmojiPicker() { emojiPicker.innerHTML = ''; emojis.forEach(emoji => { const span = document.createElement('span'); span.textContent = emoji; span.onclick = () => { mesajInput.value += emoji; emojiPicker.style.display = 'none'; mesajInput.focus(); }; emojiPicker.appendChild(span); }); emojiButton.onclick = () => { emojiPicker.style.display = emojiPicker.style.display === 'block' ? 'none' : 'block'; }; }
+function initEmojiPicker() { emojiPicker.innerHTML = ''; emojis.forEach(emoji => { const span = document.createElement('span'); span.textContent = emoji; span.onclick = () => { mesajInput.value += emoji; emojiPicker.style.display = 'none'; mesajInput.focus(); }; emojiPicker.appendChild(span); }; emojiButton.onclick = () => { emojiPicker.style.display = emojiPicker.style.display === 'block' ? 'none' : 'block'; }; }
 function showUserProfile(userId, username) { if (userId === currentUser.uid) return; document.getElementById('profile-username').textContent = username; document.getElementById('profile-userid').textContent = userId; document.getElementById('profile-block-btn').onclick = () => blockUser(userId, username); document.getElementById('profile-report-btn').onclick = () => reportUser(userId, username); modalOverlay.style.display = 'flex'; }
 function closeProfileModal() { modalOverlay.style.display = 'none'; }
 
-// YENİ: Ayarlar Modal Fonksiyonları
+// AYARLAR MODAL FONKSİYONLARI
 function openSettingsModal() {
     if (!currentUser || currentUser.isAnonymous) return alert("Bu ayarı değiştirmek için kayıtlı bir kullanıcı olmalısın.");
     newUsernameInput.value = document.getElementById('user-display-name').textContent; 
@@ -53,7 +57,7 @@ function startVideoCall() { if (!currentChatId || currentChatId === 'public_chat
 function copyMyId() { if (!currentUser || currentUser.isAnonymous) return; navigator.clipboard.writeText(currentUser.uid).then(() => { alert("Kullanıcı ID'n panoya kopyalandı!"); }); }
 function signInAnonymously() { auth.signInAnonymously().catch(error => alert("Anonim giriş başarısız: " + error.message)); }
 
-// YENİ: TIKLANABİLİR LİNKLER İÇİN FONKSİYON
+// TIKLANABİLİR LİNKLER İÇİN FONKSİYON
 function metniLinkeCevir(metin) {
     const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
     return metin.replace(urlRegex, function(url) {
@@ -65,7 +69,7 @@ function metniLinkeCevir(metin) {
     });
 }
 
-// YENİ: MESAJ SİLME İÇİN FONKSİYON
+// MESAJ SİLME İÇİN FONKSİYON (Sadece mesaj sahibi silebilir)
 function mesajSil(mesajId) {
     if (!currentUser || currentUser.isAnonymous) {
         return alert("Bu işlemi yapmak için giriş yapmalısın.");
@@ -82,7 +86,49 @@ function mesajSil(mesajId) {
     }
 }
 
-auth.onAuthStateChanged(user => { if (user) { currentUser = user; authContainer.style.display = 'none'; appContainer.style.display = 'block'; initChatApp(user.isAnonymous); } else { if (currentUser && !currentUser.isAnonymous) { database.ref(`status/${currentUser.uid}`).set({ state: 'offline' }); } currentUser = null; authContainer.style.display = 'flex'; appContainer.style.display = 'none'; } });
+// YENİ: Admin Mesaj Silme Fonksiyonu (Adminler her mesajı silebilir)
+function deleteMessage(chatId, messageKey) {
+    if (!isAdmin) {
+        console.log("Yetkisiz silme denemesi.");
+        return alert("Bu işlemi yapmak için yönetici yetkisine sahip olmalısınız.");
+    }
+    if (confirm("YÖNETİCİ OLARAK: Bu mesajı silmek istediğinizden emin misiniz?")) {
+        database.ref(`chats/${chatId}/${messageKey}`).remove()
+            .then(() => {
+                console.log("Mesaj başarıyla silindi (Admin).");
+                // loadChat(chatId, document.getElementById('chat-title').textContent); // child_added listener bunu halleder
+            })
+            .catch((error) => {
+                console.error("Mesaj silinirken hata oluştu: ", error);
+            });
+    }
+}
+
+
+auth.onAuthStateChanged(user => { 
+    if (user) { 
+        currentUser = user; 
+        
+        // Giriş yapan kullanıcının admin olup olmadığını kontrol et
+        if (user.email && adminEmails.includes(user.email)) {
+            isAdmin = true;
+        } else {
+            isAdmin = false;
+        }
+
+        authContainer.style.display = 'none'; 
+        appContainer.style.display = 'block'; 
+        initChatApp(user.isAnonymous); 
+    } else { 
+        if (currentUser && !currentUser.isAnonymous) { 
+            database.ref(`status/${currentUser.uid}`).set({ state: 'offline' }); 
+        } 
+        currentUser = null;
+        isAdmin = false; 
+        authContainer.style.display = 'flex'; 
+        appContainer.style.display = 'none'; 
+    } 
+});
 
 function initChatApp(isAnonymous) { const memberFeatures = document.getElementById('member-features'); document.getElementById('chat-list').innerHTML = ''; addChatToList('public_chat', '# Genel Sohbet'); initEmojiPicker(); if (isAnonymous) { const randomId = Math.floor(1000 + Math.random() * 9000); document.getElementById('user-display-name').textContent = `Misafir-${randomId}`; memberFeatures.style.display = 'none'; document.getElementById('image-upload-label').style.display = 'none'; loadChat('public_chat', '# Genel Sohbet'); } else { memberFeatures.style.display = 'block'; document.getElementById('image-upload-label').style.display = 'block'; document.getElementById('my-id-display').textContent = currentUser.uid; database.ref('users/' + currentUser.uid).once('value').then(snapshot => { const userData = snapshot.val() || {}; document.getElementById('user-display-name').textContent = userData.username || 'Kullanıcı'; blockList = userData.blockedUsers || {}; setupPresence(currentUser.uid, userData.username); }); loadUserChats(); loadChat('public_chat', '# Genel Sohbet'); } }
 function kayitOl() { const username = document.getElementById('register-username').value; const email = document.getElementById('register-email').value; const password = document.getElementById('register-password').value; if (!username) return alert('Lütfen bir kullanıcı adı girin!'); auth.createUserWithEmailAndPassword(email, password).then(userCredential => { database.ref('users/' + userCredential.user.uid).set({ username: username, email: email }); }).catch(error => alert('Kayıt başarısız: ' + error.message)); }
@@ -90,7 +136,7 @@ function girisYap() { const email = document.getElementById('login-email').value
 function cikisYap() { auth.signOut(); }
 function toggleForms() { const loginForm = document.getElementById('login-form'); const registerForm = document.getElementById('register-form'); if (loginForm.style.display === 'none') { loginForm.style.display = 'block'; registerForm.style.display = 'none'; } else { loginForm.style.display = 'none'; registerForm.style.display = 'block'; } }
 
-// YENİ: Kullanıcı Adı Güncelleme Mantığı
+// KULLANICI ADI GÜNCELLEME MANTIĞI
 function updateUsername() {
     if (!currentUser || currentUser.isAnonymous) return;
 
@@ -123,7 +169,7 @@ function setupTypingIndicator(chatId) { if(currentChatId) { database.ref(`typing
 function addChatToList(chatId, chatName) { const li = document.createElement('li'); li.textContent = chatName; li.dataset.chatid = chatId; li.onclick = () => loadChat(chatId, chatName); document.getElementById('chat-list').appendChild(li); }
 function loadUserChats() { const userChatsRef = database.ref(`users/${currentUser.uid}/chats`); userChatsRef.on('child_added', snapshot => { addChatToList(snapshot.key, `🔒 ${snapshot.val().withUsername}`); }); }
 
-// GÜNCEL: loadChat FONKSİYONU (Linkler ve Silme Butonu Entegrasyonu)
+// GÜNCEL loadChat FONKSİYONU (Mesaj Sahibi Silme, Admin Silme ve Linkler Entegre Edildi)
 function loadChat(chatId, chatName) { 
     if (currentChatId) { database.ref('chats/' + currentChatId).off(); } 
     currentChatId = chatId; 
@@ -159,23 +205,33 @@ function loadChat(chatId, chatName) {
         if (mesaj.type === 'image') { 
             mesajIcerigi = `<img src="${mesaj.imageUrl}" alt="Yüklenen resim">`; 
         } else { 
-            // XSS saldırılarına karşı temizle ve linke çevir (YENİ)
+            // XSS saldırılarına karşı temizle ve linke çevir
             let temizMetin = (mesaj.metin || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             mesajIcerigi = metniLinkeCevir(temizMetin);
         }
 
-        // Sadece mesaj sahibi için silme butonu ekle (YENİ)
+        // 1. MESAJ SAHİBİ KENDİ MESAJINI SİLEBİLİR
         if (mesajSahibiMi && !currentUser.isAnonymous) {
             silButonuHTML = `<button class="sil-butonu" data-id="${mesajId}">🗑️</button>`;
         }
         
-        // Yeni HTML yapısı
+        // 2. ADMİN, HERHANGİ BİR MESAJI SİLEBİLİR (Admin butonu mesajın üst başlığında)
+        let adminSilButonuHTML = '';
+        if (isAdmin && !mesajSahibiMi) { // Sadece admin ve kendi mesajı değilse gösterelim
+             adminSilButonuHTML = `<span class="admin-delete-btn" onclick="deleteMessage('${chatId}', '${mesajId}')">🗑️</span>`;
+        }
+        
+        // HTML yapısı
         div.innerHTML = `
-            <div class="mesaj-header"><strong>${mesaj.username}</strong><span class="timestamp">${zamanMetni}</span></div>
-            <div class="message-bubble">${mesajIcerigi} ${silButonuHTML}</div>
+            <div class="mesaj-header">
+                <strong>${mesaj.username}</strong>
+                ${adminSilButonuHTML}
+                <span class="timestamp">${zamanMetni}</span>
+            </div>
+            <div class="message-bubble">${mesajIcerigi} ${mesajSahibiMi ? silButonuHTML : ''}</div>
         `;
         
-        // Silme butonuna olay dinleyicisi ekle (YENİ)
+        // Silme butonuna olay dinleyicisi ekle (Sadece mesaj sahibi butonu için)
         if (mesajSahibiMi && !currentUser.isAnonymous) {
             const silButonu = div.querySelector('.sil-butonu');
             if (silButonu) {
@@ -190,6 +246,7 @@ function loadChat(chatId, chatName) {
         mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight; 
     }); 
 }
+
 function clearChatScreen() { document.getElementById('mesajlar').innerHTML = ''; }
 function mesajGonder() { if (mesajInput.value.trim() && currentUser) { const username = document.getElementById('user-display-name').textContent; database.ref('chats/' + currentChatId).push({ username: username, userId: currentUser.uid, metin: mesajInput.value, type:'text', zaman: Date.now() }); database.ref(`typing/${currentChatId}/${currentUser.uid}`).remove(); mesajInput.value = ''; } }
 imageUploadInput.addEventListener('change', (event) => { const file = event.target.files[0]; if (!file || !currentUser || currentUser.isAnonymous) return; if (!file.type.startsWith('image/')){ return alert("Lütfen sadece resim dosyası yükleyin."); } const formData = new FormData(); formData.append('image', file); fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData }).then(response => response.json()).then(result => { if (result.success) { const imageUrl = result.data.url; const username = document.getElementById('user-display-name').textContent; database.ref('chats/' + currentChatId).push({ username: username, userId: currentUser.uid, imageUrl: imageUrl, type: 'image', zaman: Date.now() }); } else { alert('Resim yüklenemedi: ' + result.error.message); } }).catch(error => { alert('Resim yüklenirken bir ağ hatası oluştu.'); }); event.target.value = ''; });
