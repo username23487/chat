@@ -1,1 +1,14 @@
+// config.js
 
+// BU BİLGİLERİ KENDİ FIREBASE PROJENDEN ALIP DOLDUR
+const firebaseConfig = { 
+    apiKey: "SENİN-FIREBASE-API-KEYİN-BURAYA", 
+    authDomain: "SENİN-AUTH-DOMAININ-BURAYA", 
+    databaseURL: "SENİN-DATABASE-URLN-BURAYA", 
+    projectId: "SENİN-PROJE-IDN-BURAYA", 
+    messagingSenderId: "SENİN-SENDER-IDN-BURAYA", 
+    appId: "SENİN-APP-IDN-BURAYA"
+};
+
+// BU BİLGİYİ KENDİ IMGBB HESABINDAN ALIP DOLDUR
+const IMGBB_API_KEY = "SENİN-IMGBB-API-KEYİN-BURAYA";
