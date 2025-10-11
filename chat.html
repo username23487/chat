@@ -17,7 +17,7 @@
         #chat-app-layout { display: flex; height: 100%; }
         #sidebar { width: 250px; background: #2f3136; display: flex; flex-direction: column; box-sizing: border-box; }
         #chat-list, #online-users-list { list-style: none; padding: 10px; margin: 0; }
-        #online-users-list li { cursor: pointer; } /* Artık tıklanabilir */
+        #online-users-list li { cursor: pointer; }
         #chat-list li, #online-users-list li { padding: 10px; border-radius: 5px; margin-bottom: 2px; word-break: break-word; font-weight: 500; }
         #chat-list li.active, #online-users-list li:hover { background: #40444b; }
         #user-info { margin-top: auto; font-size: 12px; background: #292b2f; padding: 10px; }
@@ -38,7 +38,6 @@
         #mesajInput { flex-grow: 1; padding: 12px; border: none; background: #40444b; color: #dcddde; border-radius: 5px; font-size:16px; }
         .online-dot { height: 10px; width: 10px; background-color: #43b581; border-radius: 50%; display: inline-block; margin-right: 10px; }
         #typing-indicator { height: 20px; padding: 0 20px; font-size: 13px; font-style: italic; color: #72767d; }
-        /* YENİ: Profil Penceresi (Modal) Stilleri */
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; }
         #profile-modal { background: #2f3136; padding: 25px; border-radius: 8px; width: 350px; text-align: center; }
         #profile-modal h2 { margin-top: 0; }
@@ -49,23 +48,6 @@
     </style>
 </head>
 <body>
-    <div id="auth-container"><!-- Auth HTML aynı --></div>
-    <div id="app-container"><!-- App Ana HTML aynı --></div>
-    
-    <!-- YENİ: Gizli Profil Penceresi -->
-    <div id="modal-overlay">
-        <div id="profile-modal">
-            <h2 id="profile-username"></h2>
-            <p><strong>Kullanıcı ID:</strong><br><span id="profile-userid"></span></p>
-            <div class="profile-actions">
-                <button id="profile-block-btn" class="block-btn">Engelle</button>
-                <button id="profile-report-btn" class="report-btn">Şikayet Et</button>
-            </div>
-            <button onclick="closeProfileModal()" style="margin-top:20px; background: #40444b;">Kapat</button>
-        </div>
-    </div>
-    
-    <!-- Diğer HTML ve Scriptler -->
     <div id="auth-container">
         <div class="auth-box"><div id="login-form"><h2>Giriş Yap</h2><input type="email" id="login-email" placeholder="E-posta"><input type="password" id="login-password" placeholder="Şifre"><button onclick="girisYap()">GİRİŞ YAP</button><a onclick="toggleForms()">Hesabın yok mu? Kayıt Ol</a><a onclick="signInAnonymously()" style="margin-top: 25px; color: #72767d;">veya Misafir Olarak Devam Et</a></div><div id="register-form"><h2>Kayıt Ol</h2><input type="text" id="register-username" placeholder="Kullanıcı Adı"><input type="email" id="register-email" placeholder="E-posta"><input type="password" id="register-password" placeholder="Şifre"><button onclick="kayitOl()">KAYIT OL</button><a onclick="toggleForms()">Zaten hesabın var mı? Giriş Yap</a></div></div>
     </div>
@@ -75,13 +57,23 @@
             <div id="main-chat"><div id="chat-header"><h2 id="chat-title"></h2><button onclick="clearChatScreen()" style="background:none; border:none; color:#b9bbbe; cursor:pointer;">Ekranı Temizle</button></div><div id="mesajlar"></div><div id="typing-indicator"></div><div id="input-area"><input id="mesajInput" type="text" placeholder="Mesajını yaz..."><button onclick="mesajGonder()" style="margin-left:10px; padding:12px 20px; background:#5865f2; color:white; border:none; border-radius:5px; cursor:pointer;">GÖNDER</button></div></div>
         </div>
     </div>
+    <div id="modal-overlay">
+        <div id="profile-modal">
+            <h2 id="profile-username"></h2>
+            <p><strong>Kullanıcı ID:</strong><br><span id="profile-userid"></span></p>
+            <div class="profile-actions">
+                <button id="profile-block-btn" class="block-btn">Engelle</button>
+                <button id="profile-report-btn" class="report-btn">Şikayet Et</button>
+            </div>
+            <button onclick="closeProfileModal()" style="margin-top:20px; background: #40444b; color: white; padding: 10px; border-radius: 5px; border: none; cursor: pointer; width: 100%;">Kapat</button>
+        </div>
+    </div>
     <audio id="notification-sound" src="https://www.zapsplat.com/wp-content/uploads/2015/sound-design/ui_loading_screen_generic_progress_tick_002_single.mp3" preload="auto"></audio>
 
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     <script>
-        // --- Değişkenler ---
         const firebaseConfig = { apiKey: "AIzaSyC5XS00Wu02kEVYj5thRuDXl8zhLQrRDR4", authDomain: "chatuygulama-cbf18.firebaseapp.com", databaseURL: "https://chatuygulama-cbf18-default-rtdb.firebaseio.com", projectId: "chatuygulama-cbf18", messagingSenderId: "881374423023", appId: "1:881374423023:web:8b17a88119d9123295381a"};
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
@@ -90,57 +82,27 @@
         const modalOverlay = document.getElementById('modal-overlay');
         let currentUser = null; let currentChatId = null; let typingTimeout = null; let blockList = {};
 
-        // --- YENİ PROFİL FONKSİYONLARI ---
-        function showUserProfile(userId, username) {
-            if (userId === currentUser.uid) return; // Kendine tıklayınca bir şey yapma
-            document.getElementById('profile-username').textContent = username;
-            document.getElementById('profile-userid').textContent = userId;
-            document.getElementById('profile-block-btn').onclick = () => blockUser(userId, username);
-            document.getElementById('profile-report-btn').onclick = () => reportUser(userId, username);
-            modalOverlay.style.display = 'flex';
-        }
+        function showUserProfile(userId, username) { if (userId === currentUser.uid) return; document.getElementById('profile-username').textContent = username; document.getElementById('profile-userid').textContent = userId; document.getElementById('profile-block-btn').onclick = () => blockUser(userId, username); document.getElementById('profile-report-btn').onclick = () => reportUser(userId, username); modalOverlay.style.display = 'flex'; }
         function closeProfileModal() { modalOverlay.style.display = 'none'; }
-        function blockUser(userIdToBlock, username) {
-            if (confirm(`${username} adlı kullanıcıyı engellemek istediğine emin misin? Bu kullanıcının mesajları sana artık gösterilmeyecek.`)) {
-                database.ref(`users/${currentUser.uid}/blockedUsers/${userIdToBlock}`).set(true);
-                blockList[userIdToBlock] = true; // Hafızadaki listeyi de güncelle
-                alert(`${username} engellendi.`);
-                closeProfileModal();
-            }
-        }
-        function reportUser(userIdToReport, username) {
-            const reason = prompt(`${username} adlı kullanıcıyı neden şikayet ediyorsun?`);
-            if (reason) {
-                database.ref(`reports/${userIdToReport}`).push({
-                    reportedBy: currentUser.uid,
-                    reason: reason,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
-                });
-                alert(`${username} şikayet edildi. Desteğin için teşekkürler.`);
-                closeProfileModal();
-            }
-        }
+        function blockUser(userIdToBlock, username) { if (confirm(`${username} adlı kullanıcıyı engellemek istediğine emin misin?`)) { database.ref(`users/${currentUser.uid}/blockedUsers/${userIdToBlock}`).set(true); blockList[userIdToBlock] = true; alert(`${username} engellendi.`); closeProfileModal(); } }
+        function reportUser(userIdToReport, username) { const reason = prompt(`${username} adlı kullanıcıyı neden şikayet ediyorsun?`); if (reason) { database.ref(`reports/${userIdToReport}`).push({ reportedBy: currentUser.uid, reason: reason, timestamp: firebase.database.ServerValue.TIMESTAMP }); alert(`${username} şikayet edildi.`); closeProfileModal(); } }
         
-        // --- Giriş/Kayıt ve Diğerleri ---
         function copyMyId() { if (!currentUser || currentUser.isAnonymous) return; navigator.clipboard.writeText(currentUser.uid).then(() => { alert("Kullanıcı ID'n panoya kopyalandı!"); }); }
         function signInAnonymously() { auth.signInAnonymously().catch(error => alert("Anonim giriş başarısız: " + error.message)); }
         auth.onAuthStateChanged(user => { if (user) { currentUser = user; authContainer.style.display = 'none'; appContainer.style.display = 'block'; initChatApp(user.isAnonymous); } else { if (currentUser && !currentUser.isAnonymous) { database.ref(`status/${currentUser.uid}`).set({ state: 'offline' }); } currentUser = null; authContainer.style.display = 'flex'; appContainer.style.display = 'none'; } });
-        function initChatApp(isAnonymous) { const memberFeatures = document.getElementById('member-features'); document.getElementById('chat-list').innerHTML = ''; addChatToList('public_chat', '# Genel Sohbet'); if (isAnonymous) { const randomId = Math.floor(1000 + Math.random() * 9000); document.getElementById('user-display-name').textContent = `Misafir-${randomId}`; memberFeatures.style.display = 'none'; loadChat('public_chat', '# Genel Sohbet'); } else { memberFeatures.style.display = 'block'; document.getElementById('my-id-display').textContent = currentUser.uid; database.ref('users/' + currentUser.uid).once('value').then(snapshot => { const userData = snapshot.val(); document.getElementById('user-display-name').textContent = userData.username; blockList = userData.blockedUsers || {}; setupPresence(currentUser.uid, userData.username); }); loadUserChats(); loadChat('public_chat', '# Genel Sohbet'); } }
+        function initChatApp(isAnonymous) { const memberFeatures = document.getElementById('member-features'); document.getElementById('chat-list').innerHTML = ''; addChatToList('public_chat', '# Genel Sohbet'); if (isAnonymous) { const randomId = Math.floor(1000 + Math.random() * 9000); document.getElementById('user-display-name').textContent = `Misafir-${randomId}`; memberFeatures.style.display = 'none'; loadChat('public_chat', '# Genel Sohbet'); } else { memberFeatures.style.display = 'block'; document.getElementById('my-id-display').textContent = currentUser.uid; database.ref('users/' + currentUser.uid).once('value').then(snapshot => { const userData = snapshot.val() || {}; document.getElementById('user-display-name').textContent = userData.username || 'Kullanıcı'; blockList = userData.blockedUsers || {}; setupPresence(currentUser.uid, userData.username); }); loadUserChats(); loadChat('public_chat', '# Genel Sohbet'); } }
         function kayitOl() { const username = document.getElementById('register-username').value; const email = document.getElementById('register-email').value; const password = document.getElementById('register-password').value; if (!username) return alert('Lütfen bir kullanıcı adı girin!'); auth.createUserWithEmailAndPassword(email, password).then(userCredential => { database.ref('users/' + userCredential.user.uid).set({ username: username, email: email }); }).catch(error => alert('Kayıt başarısız: ' + error.message)); }
         function girisYap() { const email = document.getElementById('login-email').value; const password = document.getElementById('login-password').value; auth.signInWithEmailAndPassword(email, password).catch(error => alert('Giriş başarısız: ' + error.message)); }
         function cikisYap() { auth.signOut(); }
         function toggleForms() { const loginForm = document.getElementById('login-form'); const registerForm = document.getElementById('register-form'); if (loginForm.style.display === 'none') { loginForm.style.display = 'block'; registerForm.style.display = 'none'; } else { loginForm.style.display = 'none'; registerForm.style.display = 'block'; } }
         
-        // --- GÜNCELLENDİ: setupPresence artık tıklanabilir liste yapıyor ---
         function setupPresence(userId, username) { const userStatusRef = database.ref('/status/' + userId); const isOnlineForDatabase = { state: 'online', username: username }; database.ref('.info/connected').on('value', (snap) => { if (snap.val() === false) { userStatusRef.set({ state: 'offline', username: username }); return; } userStatusRef.onDisconnect().set({ state: 'offline', username: username }).then(() => { userStatusRef.set(isOnlineForDatabase); }); }); const onlineUsersRef = database.ref('/status').orderByChild('state').equalTo('online'); onlineUsersRef.on('value', (snapshot) => { const onlineUsersList = document.getElementById('online-users-list'); onlineUsersList.innerHTML = ''; snapshot.forEach((child) => { const user = child.val(); const uId = child.key; if (user.username) { const li = document.createElement('li'); li.innerHTML = `<span class="online-dot"></span> ${user.username}`; li.onclick = () => showUserProfile(uId, user.username); onlineUsersList.appendChild(li); } }); }); }
         mesajInput.addEventListener('input', () => { if (!currentUser || !currentChatId || currentUser.isAnonymous) return; const typingRef = database.ref(`typing/${currentChatId}/${currentUser.uid}`); typingRef.set(document.getElementById('user-display-name').textContent); clearTimeout(typingTimeout); typingTimeout = setTimeout(() => { typingRef.remove(); }, 2000); });
         function setupTypingIndicator(chatId) { if(currentChatId) { database.ref(`typing/${currentChatId}`).off(); } const typingRef = database.ref(`typing/${chatId}`); typingRef.on('value', snapshot => { const typers = snapshot.val(); if (typers) { const typerIds = Object.keys(typers).filter(id => id !== currentUser.uid); if (typerIds.length > 0) { const names = typerIds.map(id => typers[id]).join(', '); typingIndicator.textContent = `${names} yazıyor...`; } else { typingIndicator.textContent = ''; } } else { typingIndicator.textContent = ''; } }); }
         
-        // --- Sohbet Yükleme ve Mesaj Gönderme ---
         function addChatToList(chatId, chatName) { const li = document.createElement('li'); li.textContent = chatName; li.dataset.chatid = chatId; li.onclick = () => loadChat(chatId, chatName); document.getElementById('chat-list').appendChild(li); }
         function loadUserChats() { const userChatsRef = database.ref(`users/${currentUser.uid}/chats`); userChatsRef.on('child_added', snapshot => { addChatToList(snapshot.key, `🔒 ${snapshot.val().withUsername}`); }); }
         
-        // --- GÜNCELLENDİ: loadChat artık engellenenleri gizliyor ---
         function loadChat(chatId, chatName) {
             if (currentChatId) { database.ref('chats/' + currentChatId).off(); }
             currentChatId = chatId;
@@ -153,7 +115,7 @@
             const chatRef = database.ref('chats/' + chatId);
             chatRef.orderByChild('zaman').limitToLast(100).on('child_added', (snapshot) => {
                 const mesaj = snapshot.val();
-                if (blockList[mesaj.userId]) { return; } // Engellenen kullanıcıysa mesajı gösterme
+                if (blockList[mesaj.userId]) { return; }
                 const div = document.createElement('div');
                 div.className = "mesaj " + (mesaj.userId === currentUser.uid ? 'sent' : 'received');
                 const tarih = new Date(mesaj.zaman); const saat = tarih.getHours().toString().padStart(2, '0'); const dakika = tarih.getMinutes().toString().padStart(2, '0'); const zamanMetni = `${saat}:${dakika}`;
