@@ -16,6 +16,10 @@ const imageUploadInput = document.getElementById('image-upload-input');
 const videoCallButton = document.getElementById('video-call-button');
 const modalOverlay = document.getElementById('modal-overlay');
 
+// YENİ: Ayarlar Modal Elementleri
+const settingsModal = document.getElementById('settings-modal');
+const newUsernameInput = document.getElementById('new-username'); 
+
 let currentUser = null;
 let currentChatId = null;
 let typingTimeout = null;
@@ -26,11 +30,57 @@ const emojis = ['😀', '😂', '😊', '😍', '🤔', '😎', '😭', '😡', 
 function initEmojiPicker() { emojiPicker.innerHTML = ''; emojis.forEach(emoji => { const span = document.createElement('span'); span.textContent = emoji; span.onclick = () => { mesajInput.value += emoji; emojiPicker.style.display = 'none'; mesajInput.focus(); }; emojiPicker.appendChild(span); }); emojiButton.onclick = () => { emojiPicker.style.display = emojiPicker.style.display === 'block' ? 'none' : 'block'; }; }
 function showUserProfile(userId, username) { if (userId === currentUser.uid) return; document.getElementById('profile-username').textContent = username; document.getElementById('profile-userid').textContent = userId; document.getElementById('profile-block-btn').onclick = () => blockUser(userId, username); document.getElementById('profile-report-btn').onclick = () => reportUser(userId, username); modalOverlay.style.display = 'flex'; }
 function closeProfileModal() { modalOverlay.style.display = 'none'; }
+
+// YENİ: Ayarlar Modal Fonksiyonları
+function openSettingsModal() {
+    if (!currentUser || currentUser.isAnonymous) return alert("Bu ayarı değiştirmek için kayıtlı bir kullanıcı olmalısın.");
+    newUsernameInput.value = document.getElementById('user-display-name').textContent; 
+    settingsModal.style.display = 'block'; 
+    document.getElementById('profile-modal').style.display = 'none';
+    modalOverlay.style.display = 'flex';
+}
+
+function closeSettingsModal() {
+    settingsModal.style.display = 'none';
+    if (document.getElementById('profile-modal').style.display === 'none') {
+         modalOverlay.style.display = 'none';
+    }
+}
+
 function blockUser(userIdToBlock, username) { if (confirm(`${username} adlı kullanıcıyı engellemek istediğine emin misin?`)) { database.ref(`users/${currentUser.uid}/blockedUsers/${userIdToBlock}`).set(true); blockList[userIdToBlock] = true; alert(`${username} engellendi.`); closeProfileModal(); loadChat(currentChatId, document.getElementById('chat-title').textContent); } }
 function reportUser(userIdToReport, username) { const reason = prompt(`${username} adlı kullanıcıyı neden şikayet ediyorsun?`); if (reason) { database.ref(`reports/${userIdToReport}`).push({ reportedBy: currentUser.uid, reason: reason, timestamp: firebase.database.ServerValue.TIMESTAMP }); alert(`${username} şikayet edildi.`); closeProfileModal(); } }
 function startVideoCall() { if (!currentChatId || currentChatId === 'public_chat') return; const roomName = `SohbetProjesi-${currentChatId.replace('private-', '')}-${Date.now()}`; const videoLink = `https://meet.jit.si/${roomName}`; const messageText = `Görüntülü aramaya katılmak için tıkla: <a href="${videoLink}" target="_blank" rel="noopener noreferrer">${videoLink}</a>`; const username = document.getElementById('user-display-name').textContent; database.ref('chats/' + currentChatId).push({ username: username, userId: currentUser.uid, metin: messageText, type:'text', zaman: Date.now() }); }
 function copyMyId() { if (!currentUser || currentUser.isAnonymous) return; navigator.clipboard.writeText(currentUser.uid).then(() => { alert("Kullanıcı ID'n panoya kopyalandı!"); }); }
 function signInAnonymously() { auth.signInAnonymously().catch(error => alert("Anonim giriş başarısız: " + error.message)); }
+
+// YENİ: TIKLANABİLİR LİNKLER İÇİN FONKSİYON
+function metniLinkeCevir(metin) {
+    const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    return metin.replace(urlRegex, function(url) {
+        let tamURL = url;
+        if (!tamURL.match(/^https?:\/\//i)) {
+            tamURL = 'http://' + tamURL;
+        }
+        return `<a href="${tamURL}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    });
+}
+
+// YENİ: MESAJ SİLME İÇİN FONKSİYON
+function mesajSil(mesajId) {
+    if (!currentUser || currentUser.isAnonymous) {
+        return alert("Bu işlemi yapmak için giriş yapmalısın.");
+    }
+    
+    if (confirm("Bu mesajı kalıcı olarak silmek istediğine emin misin?")) {
+        database.ref(`chats/${currentChatId}/${mesajId}`).remove()
+            .then(() => {
+                console.log(`Mesaj (${mesajId}) silindi.`);
+            })
+            .catch(error => {
+                alert("Mesaj silinirken bir hata oluştu: " + error.message);
+            });
+    }
+}
 
 auth.onAuthStateChanged(user => { if (user) { currentUser = user; authContainer.style.display = 'none'; appContainer.style.display = 'block'; initChatApp(user.isAnonymous); } else { if (currentUser && !currentUser.isAnonymous) { database.ref(`status/${currentUser.uid}`).set({ state: 'offline' }); } currentUser = null; authContainer.style.display = 'flex'; appContainer.style.display = 'none'; } });
 
@@ -39,12 +89,107 @@ function kayitOl() { const username = document.getElementById('register-username
 function girisYap() { const email = document.getElementById('login-email').value; const password = document.getElementById('login-password').value; auth.signInWithEmailAndPassword(email, password).catch(error => alert('Giriş başarısız: ' + error.message)); }
 function cikisYap() { auth.signOut(); }
 function toggleForms() { const loginForm = document.getElementById('login-form'); const registerForm = document.getElementById('register-form'); if (loginForm.style.display === 'none') { loginForm.style.display = 'block'; registerForm.style.display = 'none'; } else { loginForm.style.display = 'none'; registerForm.style.display = 'block'; } }
+
+// YENİ: Kullanıcı Adı Güncelleme Mantığı
+function updateUsername() {
+    if (!currentUser || currentUser.isAnonymous) return;
+
+    const newUsername = newUsernameInput.value.trim();
+    if (newUsername.length < 3) {
+        return alert("Kullanıcı adı en az 3 karakter olmalıdır.");
+    }
+
+    currentUser.updateProfile({
+        displayName: newUsername
+    }).then(() => {
+        return database.ref(`users/${currentUser.uid}`).update({
+            username: newUsername
+        });
+    }).then(() => {
+        document.getElementById('user-display-name').textContent = newUsername;
+        alert("Kullanıcı adı başarıyla güncellendi!");
+        closeSettingsModal();
+        setupPresence(currentUser.uid, newUsername);
+
+    }).catch(error => {
+        console.error("Kullanıcı adı güncelleme hatası:", error);
+        alert("Kullanıcı adı güncellenemedi: " + error.message);
+    });
+}
+
 function setupPresence(userId, username) { const userStatusRef = database.ref('/status/' + userId); const isOnlineForDatabase = { state: 'online', username: username }; database.ref('.info/connected').on('value', (snap) => { if (snap.val() === false) { userStatusRef.set({ state: 'offline', username: username }); return; } userStatusRef.onDisconnect().set({ state: 'offline', username: username }).then(() => { userStatusRef.set(isOnlineForDatabase); }); }); const onlineUsersRef = database.ref('/status').orderByChild('state').equalTo('online'); onlineUsersRef.on('value', (snapshot) => { const onlineUsersList = document.getElementById('online-users-list'); onlineUsersList.innerHTML = ''; snapshot.forEach((child) => { const user = child.val(); const uId = child.key; if (user.username) { const li = document.createElement('li'); li.innerHTML = `<span class="online-dot"></span> ${user.username}`; li.onclick = () => showUserProfile(uId, user.username); onlineUsersList.appendChild(li); } }); }); }
 mesajInput.addEventListener('input', () => { if (!currentUser || !currentChatId || currentUser.isAnonymous) return; const typingRef = database.ref(`typing/${currentChatId}/${currentUser.uid}`); typingRef.set(document.getElementById('user-display-name').textContent); clearTimeout(typingTimeout); typingTimeout = setTimeout(() => { typingRef.remove(); }, 2000); });
 function setupTypingIndicator(chatId) { if(currentChatId) { database.ref(`typing/${currentChatId}`).off(); } const typingRef = database.ref(`typing/${chatId}`); typingRef.on('value', snapshot => { const typers = snapshot.val(); if (typers) { const typerIds = Object.keys(typers).filter(id => id !== currentUser.uid); if (typerIds.length > 0) { const names = typerIds.map(id => typers[id]).join(', '); typingIndicator.textContent = `${names} yazıyor...`; } else { typingIndicator.textContent = ''; } } else { typingIndicator.textContent = ''; } }); }
 function addChatToList(chatId, chatName) { const li = document.createElement('li'); li.textContent = chatName; li.dataset.chatid = chatId; li.onclick = () => loadChat(chatId, chatName); document.getElementById('chat-list').appendChild(li); }
 function loadUserChats() { const userChatsRef = database.ref(`users/${currentUser.uid}/chats`); userChatsRef.on('child_added', snapshot => { addChatToList(snapshot.key, `🔒 ${snapshot.val().withUsername}`); }); }
-function loadChat(chatId, chatName) { if (currentChatId) { database.ref('chats/' + currentChatId).off(); } currentChatId = chatId; videoCallButton.style.display = chatId.startsWith('private-') ? 'inline-block' : 'none'; const mesajlarDiv = document.getElementById('mesajlar'); mesajlarDiv.innerHTML = ''; document.getElementById('chat-title').textContent = chatName; document.querySelectorAll('#chat-list li').forEach(li => li.classList.remove('active')); document.querySelector(`li[data-chatid="${chatId}"]`).classList.add('active'); setupTypingIndicator(chatId); const chatRef = database.ref('chats/' + chatId); chatRef.orderByChild('zaman').limitToLast(100).on('child_added', (snapshot) => { const mesaj = snapshot.val(); if (blockList[mesaj.userId]) { return; } if (currentUser && mesaj.userId !== currentUser.uid && document.hidden) { notificationSound.play().catch(e => console.error("Bildirim sesi oynatılamadı:", e)); } const div = document.createElement('div'); div.className = "mesaj " + (mesaj.userId === currentUser.uid ? 'sent' : 'received'); const tarih = new Date(mesaj.zaman); const saat = tarih.getHours().toString().padStart(2, '0'); const dakika = tarih.getMinutes().toString().padStart(2, '0'); const zamanMetni = `${saat}:${dakika}`; let mesajIcerigi = ''; if (mesaj.type === 'image') { mesajIcerigi = `<img src="${mesaj.imageUrl}" alt="Yüklenen resim">`; } else { mesajIcerigi = (mesaj.metin || "").replace(/</g, "&lt;").replace(/>/g, "&gt;"); } div.innerHTML = `<div class="mesaj-header"><strong>${mesaj.username}</strong><span class="timestamp">${zamanMetni}</span></div><div class="message-bubble">${mesajIcerigi}</div>`; mesajlarDiv.appendChild(div); mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight; }); }
+
+// GÜNCEL: loadChat FONKSİYONU (Linkler ve Silme Butonu Entegrasyonu)
+function loadChat(chatId, chatName) { 
+    if (currentChatId) { database.ref('chats/' + currentChatId).off(); } 
+    currentChatId = chatId; 
+    videoCallButton.style.display = chatId.startsWith('private-') ? 'inline-block' : 'none'; 
+    const mesajlarDiv = document.getElementById('mesajlar'); 
+    mesajlarDiv.innerHTML = ''; 
+    document.getElementById('chat-title').textContent = chatName; 
+    document.querySelectorAll('#chat-list li').forEach(li => li.classList.remove('active')); 
+    document.querySelector(`li[data-chatid="${chatId}"]`).classList.add('active'); 
+    setupTypingIndicator(chatId); 
+    const chatRef = database.ref('chats/' + chatId); 
+    chatRef.orderByChild('zaman').limitToLast(100).on('child_added', (snapshot) => { 
+        const mesaj = snapshot.val();
+        const mesajId = snapshot.key; // Mesaj silme için kritik
+        const mesajSahibiMi = currentUser && mesaj.userId === currentUser.uid;
+
+        if (blockList[mesaj.userId]) { return; } 
+        if (currentUser && mesaj.userId !== currentUser.uid && document.hidden) { 
+            notificationSound.play().catch(e => console.error("Bildirim sesi oynatılamadı:", e)); 
+        } 
+        
+        const div = document.createElement('div'); 
+        div.className = "mesaj " + (mesajSahibiMi ? 'sent' : 'received'); 
+        
+        const tarih = new Date(mesaj.zaman); 
+        const saat = tarih.getHours().toString().padStart(2, '0'); 
+        const dakika = tarih.getMinutes().toString().padStart(2, '0'); 
+        const zamanMetni = `${saat}:${dakika}`; 
+        
+        let mesajIcerigi = '';
+        let silButonuHTML = '';
+
+        if (mesaj.type === 'image') { 
+            mesajIcerigi = `<img src="${mesaj.imageUrl}" alt="Yüklenen resim">`; 
+        } else { 
+            // XSS saldırılarına karşı temizle ve linke çevir (YENİ)
+            let temizMetin = (mesaj.metin || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            mesajIcerigi = metniLinkeCevir(temizMetin);
+        }
+
+        // Sadece mesaj sahibi için silme butonu ekle (YENİ)
+        if (mesajSahibiMi && !currentUser.isAnonymous) {
+            silButonuHTML = `<button class="sil-butonu" data-id="${mesajId}">🗑️</button>`;
+        }
+        
+        // Yeni HTML yapısı
+        div.innerHTML = `
+            <div class="mesaj-header"><strong>${mesaj.username}</strong><span class="timestamp">${zamanMetni}</span></div>
+            <div class="message-bubble">${mesajIcerigi} ${silButonuHTML}</div>
+        `;
+        
+        // Silme butonuna olay dinleyicisi ekle (YENİ)
+        if (mesajSahibiMi && !currentUser.isAnonymous) {
+            const silButonu = div.querySelector('.sil-butonu');
+            if (silButonu) {
+                silButonu.addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    mesajSil(mesajId);
+                });
+            }
+        }
+        
+        mesajlarDiv.appendChild(div); 
+        mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight; 
+    }); 
+}
 function clearChatScreen() { document.getElementById('mesajlar').innerHTML = ''; }
 function mesajGonder() { if (mesajInput.value.trim() && currentUser) { const username = document.getElementById('user-display-name').textContent; database.ref('chats/' + currentChatId).push({ username: username, userId: currentUser.uid, metin: mesajInput.value, type:'text', zaman: Date.now() }); database.ref(`typing/${currentChatId}/${currentUser.uid}`).remove(); mesajInput.value = ''; } }
 imageUploadInput.addEventListener('change', (event) => { const file = event.target.files[0]; if (!file || !currentUser || currentUser.isAnonymous) return; if (!file.type.startsWith('image/')){ return alert("Lütfen sadece resim dosyası yükleyin."); } const formData = new FormData(); formData.append('image', file); fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData }).then(response => response.json()).then(result => { if (result.success) { const imageUrl = result.data.url; const username = document.getElementById('user-display-name').textContent; database.ref('chats/' + currentChatId).push({ username: username, userId: currentUser.uid, imageUrl: imageUrl, type: 'image', zaman: Date.now() }); } else { alert('Resim yüklenemedi: ' + result.error.message); } }).catch(error => { alert('Resim yüklenirken bir ağ hatası oluştu.'); }); event.target.value = ''; });
