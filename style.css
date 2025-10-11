@@ -27,9 +27,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .mesaj.sent .message-bubble { background: #5865f2; }
 .mesaj.received .message-bubble { background: #40444b; }
 .message-bubble a { color: #00a8fc; text-decoration: underline; }
-.mesaj-header { display: flex; align-items: baseline; margin-bottom: 4px; }
+.mesaj-header { display: flex; align-items: center; margin-bottom: 4px; } /* 'align-items' güncellendi */
 .mesaj strong { color: #fff; font-size: 14px; }
-.mesaj .timestamp { font-size: 11px; color: #72767d; margin-left: 8px; }
+.mesaj .timestamp { font-size: 11px; color: #72767d; margin-left: auto; } /* 'margin-left' güncellendi */
 .mesaj img { max-width: 100%; width: 300px; border-radius: 10px; margin-top: 5px; cursor: pointer; }
 #input-area { display: flex; align-items: center; padding: 20px; background: #2f3136; }
 #mesajInput { flex-grow: 1; padding: 12px; border: none; background: #40444b; color: #dcddde; border-radius: 5px; font-size:16px; }
@@ -46,3 +46,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .profile-actions button { width: 100%; padding: 10px; border-radius: 5px; border: none; font-size: 16px; cursor: pointer; margin-top: 10px; }
 .profile-actions .block-btn { background: #d83c3e; color: white; }
 .profile-actions .report-btn { background: #faa61a; color: white; }
+
+/* --- YÖNETİCİ SİLME BUTONU İÇİN EKLENEN KODLAR --- */
+.delete-btn {
+    cursor: pointer;
+    margin-left: 10px;
+    font-size: 16px;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.delete-btn:hover {
+    opacity: 1;
+}
