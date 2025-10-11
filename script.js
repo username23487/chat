@@ -25,18 +25,14 @@ const avatarUploadInput = document.getElementById('avatar-upload-input');
 const currentAvatarPreview = document.getElementById('current-avatar-preview');
 const DEFAULT_AVATAR_URL = "https://i.ibb.co/6g92Y9F/default-avatar.png"; // Varsayılan avatar URL'si
 
-// ADMIN ARAÇLARI İÇİN YENİ ELEMENTLER
-const adminToolsSection = document.getElementById('admin-tools-section');
-
 let currentUser = null;
 let currentChatId = null;
 let typingTimeout = null;
 let blockList = {};
-let userAvatars = {};
-let isBanned = false; // YENİ: Kullanıcının yasaklı olup olmadığını tutar
+let userAvatars = {}; // Kullanıcıların avatar URL'lerini tutar
 
-// Yönetici e-postalarını burada tanımlıyoruz. 
-const adminEmails = ["admin@gmail.com"];
+// Yönetici e-postalarını burada tanımlıyoruz. (Artık sadece mesaj silme için kullanılacak)
+const adminEmails = ["admin@gmail.com"]; 
 let isAdmin = false; 
 
 const emojis = ['😀', '😂', '😊', '😍', '🤔', '😎', '😭', '😡', '👍', '👎', '❤️', '🔥', '🎉', '👋'];
@@ -72,13 +68,8 @@ function showUserProfile(userId, username) {
     document.getElementById('profile-block-btn').onclick = () => blockUser(userId, username); 
     document.getElementById('profile-report-btn').onclick = () => reportUser(userId, username); 
     
-    // Adminse BAN butonu göster
-    const adminActionContainer = document.getElementById('profile-admin-actions');
-    if (isAdmin) {
-        adminActionContainer.innerHTML = `<button onclick="adminBanUser('${userId}', '${username}')" class="admin-ban-btn">Kullanıcıyı Yasakla (BAN)</button>`;
-    } else {
-        adminActionContainer.innerHTML = '';
-    }
+    // Admin araçları kaldırıldığı için bu kısım sadeleşti
+    document.getElementById('profile-admin-actions').innerHTML = '';
 
     modalOverlay.style.display = 'flex'; 
 }
@@ -93,20 +84,16 @@ function closeProfileModal() {
 // Ayarlar modalı açıldığında mevcut avatarı ve kullanıcı adını göster
 function openSettingsModal() {
     if (!currentUser || currentUser.isAnonymous) return alert("Bu ayarı değiştirmek için kayıtlı bir kullanıcı olmalısınız.");
-    if (isBanned) return alert("Hesabınız yasaklandığı için ayarları değiştiremezsiniz."); // BAN kontrolü
     
     newUsernameInput.value = document.getElementById('user-display-name').textContent; 
     
     // Mevcut avatarı cache'ten yükle
     currentAvatarPreview.src = userAvatars[currentUser.uid] || DEFAULT_AVATAR_URL;
 
-    // YENİ: Admin araçlarını göster/gizle
-    if (isAdmin) {
-        // admin-tools-section'ı görünür yap ve unban listesini yükle
-        document.getElementById('admin-tools-section').style.display = 'block';
-        loadBannedUsersList(); 
-    } else {
-        document.getElementById('admin-tools-section').style.display = 'none';
+    // Admin araçları HTML'i kaldırıldı/gizlendi
+    const adminToolsSection = document.getElementById('admin-tools-section');
+    if (adminToolsSection) {
+        adminToolsSection.style.display = 'none';
     }
 
     document.getElementById('profile-modal').style.display = 'none';
@@ -122,7 +109,6 @@ function closeSettingsModal() {
 }
 
 function blockUser(userIdToBlock, username) { 
-    if (isBanned) return alert("Hesabınız yasaklı olduğu için bu işlemi yapamazsınız."); // BAN kontrolü
     if (confirm(`${username} adlı kullanıcıyı engellemek istediğine emin misin?`)) { 
         database.ref(`users/${currentUser.uid}/blockedUsers/${userIdToBlock}`).set(true); 
         blockList[userIdToBlock] = true; 
@@ -132,7 +118,6 @@ function blockUser(userIdToBlock, username) {
     } 
 }
 function reportUser(userIdToReport, username) { 
-    if (isBanned) return alert("Hesabınız yasaklı olduğu için bu işlemi yapamazsınız."); // BAN kontrolü
     const reason = prompt(`${username} adlı kullanıcıyı neden şikayet ediyorsun?`); 
     if (reason) { 
         database.ref(`reports/${userIdToReport}`).push({ 
@@ -145,7 +130,6 @@ function reportUser(userIdToReport, username) {
     } 
 }
 function startVideoCall() { 
-    if (isBanned) return alert("Hesabınız yasaklı olduğu için bu işlemi yapamazsınız."); // BAN kontrolü
     if (!currentChatId || currentChatId === 'public_chat') return; 
     const roomName = `SohbetProjesi-${currentChatId.replace('private-', '')}-${Date.now()}`; 
     const videoLink = `https://meet.jit.si/${roomName}`; 
@@ -186,7 +170,6 @@ function mesajSil(mesajId) {
     if (!currentUser || currentUser.isAnonymous) {
         return alert("Bu işlemi yapmak için giriş yapmalısınız.");
     }
-    if (isBanned) return alert("Hesabınız yasaklı olduğu için bu işlemi yapamazsınız."); // BAN kontrolü
     
     if (confirm("Bu mesajı kalıcı olarak silmek istediğine emin misin?")) {
         database.ref(`chats/${currentChatId}/${mesajId}`).remove()
@@ -199,7 +182,7 @@ function mesajSil(mesajId) {
     }
 }
 
-// Admin Mesaj Silme Fonksiyonu (Adminler her mesajı silebilir)
+// Admin Mesaj Silme Fonksiyonu (Sadece Adminler kullanabilir)
 function deleteMessage(chatId, messageKey) {
     if (!isAdmin) {
         console.log("Yetkisiz silme denemesi.");
@@ -216,108 +199,27 @@ function deleteMessage(chatId, messageKey) {
     }
 }
 
-// YENİ: KULLANICI BANLAMA FONKSİYONLARI
-function adminBanUser(userIdToBan, username) {
-    if (!isAdmin) return alert("Bu işlemi yapmaya yetkiniz yok.");
-    if (userIdToBan === currentUser.uid) return alert("Kendini yasaklayamazsın!");
-
-    if (confirm(`ADMIN: ${username} (${userIdToBan}) adlı kullanıcıyı YASAKLAMAK istediğine emin misin?`)) {
-        database.ref(`bannedUsers/${userIdToBan}`).set({
-            username: username,
-            bannedBy: currentUser.uid,
-            banTime: firebase.database.ServerValue.TIMESTAMP,
-            reason: prompt("Yasaklama nedenini giriniz (isteğe bağlı):") || "Belirtilmemiş"
-        }).then(() => {
-            alert(`${username} başarıyla yasaklandı.`);
-            closeProfileModal();
-        }).catch(error => {
-            alert("Yasaklama işlemi başarısız: " + error.message);
-        });
-    }
-}
-
-function adminUnbanUser(userIdToUnban, username) {
-    if (!isAdmin) return alert("Bu işlemi yapmaya yetkiniz yok.");
-
-    if (confirm(`ADMIN: ${username} (${userIdToUnban}) adlı kullanıcının YASAĞINI KALDIRMAK istediğine emin misin?`)) {
-        database.ref(`bannedUsers/${userIdToUnban}`).remove().then(() => {
-            alert(`${username} kullanıcısının yasağı kaldırıldı.`);
-            loadBannedUsersList(); // Listeyi güncelle
-        }).catch(error => {
-            alert("Yasak kaldırma işlemi başarısız: " + error.message);
-        });
-    }
-}
-
-function loadBannedUsersList() {
-    if (!isAdmin) return;
-    const list = document.getElementById('banned-users-list');
-    list.innerHTML = '';
-
-    database.ref('bannedUsers').once('value').then(snapshot => {
-        const bannedUsers = snapshot.val();
-        if (!bannedUsers) {
-            list.innerHTML = '<li>Yasaklanmış kullanıcı yok.</li>';
-            return;
-        }
-
-        Object.keys(bannedUsers).forEach(userId => {
-            const user = bannedUsers[userId];
-            const li = document.createElement('li');
-            
-            let banTime = "Bilinmiyor";
-            if (user.banTime) {
-                const date = new Date(user.banTime);
-                banTime = date.toLocaleDateString() + " " + date.toLocaleTimeString();
-            }
-
-            li.innerHTML = `
-                <strong>${user.username}</strong> (${userId})
-                <br>
-                <small>Neden: ${user.reason} | Yasaklayan: ${user.bannedBy} | Zaman: ${banTime}</small>
-                <button onclick="adminUnbanUser('${userId}', '${user.username}')" class="unban-btn">Yasağı Kaldır</button>
-            `;
-            list.appendChild(li);
-        });
-    });
-}
-
 
 auth.onAuthStateChanged(user => { 
     if (user) { 
         currentUser = user; 
         
-        // 1. Admin kontrolü
+        // Sadece mesaj silme için Admin kontrolü
         if (user.email && adminEmails.includes(user.email)) {
             isAdmin = true;
         } else {
             isAdmin = false;
         }
-        
-        // 2. YENİ: BAN kontrolü yap
-        database.ref(`bannedUsers/${currentUser.uid}`).once('value').then(snapshot => {
-            isBanned = snapshot.exists();
-            
-            if (isBanned && !isAdmin) {
-                // Yasaklı kullanıcı giriş yapmasın
-                auth.signOut();
-                alert("Hesabınız yöneticiler tarafından yasaklanmıştır. Lütfen yönetici ile iletişime geçin.");
-                return;
-            }
 
-            // Girişe izin verildiyse devam et
-            authContainer.style.display = 'none'; 
-            appContainer.style.display = 'block'; 
-            initChatApp(user.isAnonymous); 
-        });
-
+        authContainer.style.display = 'none'; 
+        appContainer.style.display = 'block'; 
+        initChatApp(user.isAnonymous); 
     } else { 
         if (currentUser && !currentUser.isAnonymous) { 
             database.ref(`status/${currentUser.uid}`).set({ state: 'offline' }); 
         } 
         currentUser = null;
         isAdmin = false; 
-        isBanned = false; 
         authContainer.style.display = 'flex'; 
         appContainer.style.display = 'none'; 
     } 
@@ -382,11 +284,7 @@ function kayitOl() {
 function girisYap() { 
     const email = document.getElementById('login-email').value; 
     const password = document.getElementById('login-password').value; 
-    
-    // YENİ: Giriş yapmaya çalışmadan önce ban kontrolü
-    auth.signInWithEmailAndPassword(email, password).then(userCredential => {
-        // Oturum açıldı, auth.onAuthStateChanged içinde ban kontrolü yapılacak.
-    }).catch(error => alert('Giriş başarısız: ' + error.message)); 
+    auth.signInWithEmailAndPassword(email, password).catch(error => alert('Giriş başarısız: ' + error.message)); 
 }
 function cikisYap() { 
     auth.signOut(); 
@@ -406,7 +304,6 @@ function toggleForms() {
 // KULLANICI ADI GÜNCELLEME MANTIĞI
 function updateUsername() {
     if (!currentUser || currentUser.isAnonymous) return;
-    if (isBanned) return alert("Hesabınız yasaklı olduğu için kullanıcı adınızı değiştiremezsiniz."); // BAN kontrolü
 
     const newUsername = newUsernameInput.value.trim();
     if (newUsername.length < 3) {
@@ -434,7 +331,6 @@ function updateUsername() {
 avatarUploadInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (!file || !currentUser || currentUser.isAnonymous) return;
-    if (isBanned) return alert("Hesabınız yasaklı olduğu için profil fotoğrafı yükleyemezsiniz."); // BAN kontrolü
     if (!file.type.startsWith('image/')) { return alert("Lütfen sadece resim dosyası yükleyin."); }
 
     if (typeof IMGBB_API_KEY === 'undefined') {
@@ -530,7 +426,6 @@ function setupPresence(userId, username) {
 }
 mesajInput.addEventListener('input', () => { 
     if (!currentUser || !currentChatId || currentUser.isAnonymous) return; 
-    if (isBanned) return; // Yasaklı kullanıcı yazamaz
     
     const typingRef = database.ref(`typing/${currentChatId}/${currentUser.uid}`); 
     typingRef.set(document.getElementById('user-display-name').textContent); 
@@ -637,6 +532,7 @@ function loadChat(chatId, chatName) {
         }
         
         let adminSilButonuHTML = '';
+        // Sadece admin ise mesaj silme butonu gösterilir
         if (isAdmin && !mesajSahibiMi) { 
              adminSilButonuHTML = `<span class="admin-delete-btn" onclick="deleteMessage('${chatId}', '${mesajId}')">🗑️</span>`;
         }
@@ -670,8 +566,6 @@ function loadChat(chatId, chatName) {
 
 function clearChatScreen() { document.getElementById('mesajlar').innerHTML = ''; }
 function mesajGonder() { 
-    if (isBanned) return alert("Hesabınız yasaklandığı için mesaj gönderemezsiniz."); // BAN kontrolü
-    
     if (mesajInput.value.trim() && currentUser) { 
         const username = document.getElementById('user-display-name').textContent; 
         database.ref('chats/' + currentChatId).push({ 
@@ -688,7 +582,6 @@ function mesajGonder() {
 imageUploadInput.addEventListener('change', (event) => { 
     const file = event.target.files[0]; 
     if (!file || !currentUser || currentUser.isAnonymous) return; 
-    if (isBanned) return alert("Hesabınız yasaklandığı için resim yükleyemezsiniz."); // BAN kontrolü
     if (!file.type.startsWith('image/')){ return alert("Lütfen sadece resim dosyası yükleyin."); } 
     
     if (typeof IMGBB_API_KEY === 'undefined') {
@@ -722,7 +615,6 @@ imageUploadInput.addEventListener('change', (event) => {
 });
 
 async function startPrivateChat() { 
-    if (isBanned) return alert("Hesabınız yasaklandığı için özel sohbet başlatamazsınız."); // BAN kontrolü
     if (!currentUser || currentUser.isAnonymous) {
         return alert("Özel sohbet başlatmak için kayıtlı bir kullanıcı olmalısınız.");
     }
