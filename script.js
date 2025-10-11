@@ -25,11 +25,17 @@ const avatarUploadInput = document.getElementById('avatar-upload-input');
 const currentAvatarPreview = document.getElementById('current-avatar-preview');
 const DEFAULT_AVATAR_URL = "https://i.ibb.co/6g92Y9F/default-avatar.png"; // Varsayılan avatar URL'si
 
+// YENİ ELEMANLAR: Sidebar yönetimi
+const sidebar = document.getElementById('sidebar');
+const toggleSidebarButton = document.getElementById('toggle-sidebar-button');
+const sidebarToggleIcon = document.getElementById('sidebar-toggle-icon');
+
 let currentUser = null;
 let currentChatId = null;
 let typingTimeout = null;
 let blockList = {};
 let userAvatars = {}; // Kullanıcıların avatar URL'lerini tutar
+let isSidebarOpen = true; // Sidebar'ın başlangıç durumu
 
 // Yönetici e-postaları (Sadece mesaj silme yetkisi için tutuluyor)
 const adminEmails = ["admin@gmail.com"]; 
@@ -54,7 +60,20 @@ function initEmojiPicker() {
     }; 
 }
 
-// DÜZELTİLMİŞ: Profil modalında avatarı göster ve misafir kontrolü eklendi
+// YENİ FONKSİYON: Menüyü açıp kapatma
+function toggleSidebar() {
+    isSidebarOpen = !isSidebarOpen;
+    
+    if (isSidebarOpen) {
+        sidebar.classList.remove('closed');
+        sidebarToggleIcon.textContent = "☰"; // Menü ikonu
+    } else {
+        sidebar.classList.add('closed');
+        sidebarToggleIcon.textContent = "⚙️"; // Ayarlar ikonu
+    }
+}
+
+
 function showUserProfile(userId, username) { 
     if (userId === currentUser.uid) return; 
     
@@ -89,9 +108,16 @@ function closeProfileModal() {
     }
 }
 
-// Ayarlar modalı açıldığında mevcut avatarı ve kullanıcı adını göster
+// GÜNCELLENDİ: Ayarlar modalı açıldığında menüyü kapat
 function openSettingsModal() {
     if (!currentUser || currentUser.isAnonymous) return alert("Bu ayarı değiştirmek için kayıtlı bir kullanıcı olmalısınız.");
+    
+    // Ayarlar butonu tetiklendiğinde menüyü kapat
+    if(isSidebarOpen) {
+        // Ancak bu fonksiyon sidebar içinde basılan AYARLAR butonundan tetikleniyor. 
+        // Sidebar'ın kendisinin daralması için burada toggleSidebar'ı çağırmak mantıklı.
+        toggleSidebar(); 
+    }
     
     newUsernameInput.value = document.getElementById('user-display-name').textContent; 
     
@@ -114,6 +140,10 @@ function closeSettingsModal() {
     if (document.getElementById('profile-modal').style.display === 'none' || document.getElementById('profile-modal').style.display === '') {
         modalOverlay.style.display = 'none';
     }
+    // Ayarlar modalı kapandığında menü kapalı kalır. Açmak istersen bu kodu ekle:
+    // if(!isSidebarOpen) {
+    //     toggleSidebar();
+    // }
 }
 
 function blockUser(userIdToBlock, username) { 
@@ -238,6 +268,18 @@ function initChatApp(isAnonymous) {
     document.getElementById('chat-list').innerHTML = ''; 
     addChatToList('public_chat', '# Genel Sohbet'); 
     initEmojiPicker(); 
+
+    // Sidebar başlangıç durumunu ayarla
+    if (sidebar) {
+        if (isSidebarOpen) {
+            sidebar.classList.remove('closed');
+            sidebarToggleIcon.textContent = "☰";
+        } else {
+            sidebar.classList.add('closed');
+            sidebarToggleIcon.textContent = "⚙️";
+        }
+    }
+
 
     if (isAnonymous) { 
         const randomId = Math.floor(1000 + Math.random() * 9000); 
@@ -413,7 +455,7 @@ function setupPresence(userId, username) {
                     // Avatar URL'sini cache'ten (userAvatars) al
                     const avatar = userAvatars[uId] || DEFAULT_AVATAR_URL;
                     
-                    // DÜZELTİLDİ: Username'deki tırnak işaretlerini kaçırıyoruz ve onclick'i daha güvenli atıyoruz.
+                    // Profil açma sorunu için onclick'i div içine al
                     const sanitizedUsername = user.username.replace(/'/g, "\\'"); 
 
                     li.innerHTML = `
@@ -665,3 +707,9 @@ async function startPrivateChat() {
 document.getElementById('mesajInput').addEventListener('keypress', (e) => { 
     if (e.key === 'Enter') mesajGonder(); 
 });
+
+
+// YENİ OLAY DİNLEYİCİSİ
+if (toggleSidebarButton) {
+    toggleSidebarButton.addEventListener('click', toggleSidebar);
+}
