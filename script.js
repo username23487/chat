@@ -31,7 +31,7 @@ let typingTimeout = null;
 let blockList = {};
 let userAvatars = {}; // Kullanıcıların avatar URL'lerini tutar
 
-// Yönetici e-postalarını burada tanımlıyoruz. (Artık sadece mesaj silme için kullanılacak)
+// Yönetici e-postaları (Sadece mesaj silme yetkisi için tutuluyor)
 const adminEmails = ["admin@gmail.com"]; 
 let isAdmin = false; 
 
@@ -54,10 +54,15 @@ function initEmojiPicker() {
     }; 
 }
 
-// Profil modalında avatarı göster
+// DÜZELTİLMİŞ: Profil modalında avatarı göster ve misafir kontrolü eklendi
 function showUserProfile(userId, username) { 
     if (userId === currentUser.uid) return; 
     
+    // Kayıtlı kullanıcı değilsen, başkalarının profilini göremezsin
+    if (currentUser.isAnonymous) {
+        return alert("Misafir kullanıcılar, diğer kullanıcıların detaylarına bakamaz.");
+    }
+
     // Avatarı cache'ten çek
     const avatarUrl = userAvatars[userId] || DEFAULT_AVATAR_URL;
     document.getElementById('profile-avatar-display').src = avatarUrl;
@@ -69,7 +74,10 @@ function showUserProfile(userId, username) {
     document.getElementById('profile-report-btn').onclick = () => reportUser(userId, username); 
     
     // Admin araçları kaldırıldığı için bu kısım sadeleşti
-    document.getElementById('profile-admin-actions').innerHTML = '';
+    const adminActionContainer = document.getElementById('profile-admin-actions');
+    if (adminActionContainer) {
+         adminActionContainer.innerHTML = '';
+    }
 
     modalOverlay.style.display = 'flex'; 
 }
