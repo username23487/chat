@@ -29,8 +29,7 @@ let currentUser = null;
 let currentChatId = null;
 let typingTimeout = null;
 let blockList = {};
-// Bu objeyi kullanıcıların avatar URL'lerini tutmak için kullanacağız
-let userAvatars = {};
+let userAvatars = {}; // Bu obje, kullanıcıların avatar URL'lerini tutmak için kullanılır
 
 // Yönetici e-postalarını burada tanımlıyoruz. 
 const adminEmails = ["admin@gmail.com"];
@@ -55,16 +54,14 @@ function initEmojiPicker() {
     }; 
 }
 
-// GÜNCELLENDİ: Profil modalında avatarı göster
+// Profil modalında avatarı göster
 function showUserProfile(userId, username) { 
     if (userId === currentUser.uid) return; 
     
-    // Avatarı çek
-    database.ref(`users/${userId}/avatarUrl`).once('value').then(snapshot => {
-        const avatarUrl = snapshot.val() || DEFAULT_AVATAR_URL;
-        document.getElementById('profile-avatar-display').src = avatarUrl;
-    });
-
+    // Avatarı cache'ten çek
+    const avatarUrl = userAvatars[userId] || DEFAULT_AVATAR_URL;
+    document.getElementById('profile-avatar-display').src = avatarUrl;
+    
     document.getElementById('profile-modal').style.display = 'block';
     document.getElementById('profile-username').textContent = username; 
     document.getElementById('profile-userid').textContent = userId; 
@@ -80,17 +77,14 @@ function closeProfileModal() {
     }
 }
 
-// GÜNCELLENDİ: Ayarlar modalı açıldığında mevcut avatarı ve kullanıcı adını göster
+// Ayarlar modalı açıldığında mevcut avatarı ve kullanıcı adını göster
 function openSettingsModal() {
     if (!currentUser || currentUser.isAnonymous) return alert("Bu ayarı değiştirmek için kayıtlı bir kullanıcı olmalısınız.");
     
     newUsernameInput.value = document.getElementById('user-display-name').textContent; 
     
-    // Mevcut avatarı yükle
-    database.ref(`users/${currentUser.uid}/avatarUrl`).once('value').then(snapshot => {
-        const avatarUrl = snapshot.val() || DEFAULT_AVATAR_URL;
-        currentAvatarPreview.src = avatarUrl;
-    });
+    // Mevcut avatarı cache'ten yükle
+    currentAvatarPreview.src = userAvatars[currentUser.uid] || DEFAULT_AVATAR_URL;
 
     document.getElementById('profile-modal').style.display = 'none';
     settingsModal.style.display = 'block'; 
@@ -212,7 +206,6 @@ auth.onAuthStateChanged(user => {
         initChatApp(user.isAnonymous); 
     } else { 
         if (currentUser && !currentUser.isAnonymous) { 
-            // Kullanıcı çıkış yaptığında (veya anonim değilken) durumunu offline yap
             database.ref(`status/${currentUser.uid}`).set({ state: 'offline' }); 
         } 
         currentUser = null;
@@ -365,15 +358,13 @@ avatarUploadInput.addEventListener('change', (event) => {
     });
 });
 
-// GÜNCELLENDİ: Çevrimiçi listesi ve avatar çekme mantığı
+// Çevrimiçi listesi ve avatar çekme mantığı
 function setupPresence(userId, username) { 
     const userStatusRef = database.ref('/status/' + userId); 
     const isOnlineForDatabase = { state: 'online', username: username }; 
     
     database.ref('.info/connected').on('value', (snap) => { 
         if (snap.val() === false) { 
-            // Bu satır kaldırıldı. onDisconnect zaten offline yapıyor.
-            // userStatusRef.set({ state: 'offline', username: username }); 
             return; 
         } 
         userStatusRef.onDisconnect().set({ state: 'offline', username: username }).then(() => { 
@@ -412,14 +403,14 @@ function setupPresence(userId, username) {
             }); 
         });
     });
-    // Hata oluşumunu engellemek için, user/avatarUrl değişikliklerini de dinleyebiliriz (isteğe bağlı)
+    // user/avatarUrl değişikliklerini de dinle
     database.ref('users').on('child_changed', (snapshot) => {
         const uId = snapshot.key;
         const userData = snapshot.val();
         if(userData.avatarUrl) {
             userAvatars[uId] = userData.avatarUrl;
         }
-        // Çevrimiçi listesini tekrar render etmek gerekebilir
+        // Çevrimiçi listesini tekrar render etmek için event'i tetikle
         onlineUsersRef.once('value', () => {}); 
     });
 }
@@ -466,7 +457,7 @@ function loadUserChats() {
     }); 
 }
 
-// GÜNCELLENDİ: Mesaj çekilirken avatar URL'si cache'ten çekilir
+// Mesaj çekilirken avatar URL'si cache'ten çekilir
 function loadChat(chatId, chatName) { 
     if (currentChatId) { database.ref('chats/' + currentChatId).off(); } 
     currentChatId = chatId; 
@@ -492,7 +483,6 @@ function loadChat(chatId, chatName) {
         }
     });
 
-    // Avatar cache'i dolu olduğu için artık async await kullanmaya gerek yok, performans daha iyi olacaktır.
     chatRef.orderByChild('zaman').limitToLast(100).on('child_added', (snapshot) => { 
         const mesaj = snapshot.val();
         const mesajId = snapshot.key; 
@@ -503,7 +493,7 @@ function loadChat(chatId, chatName) {
             notificationSound.play().catch(e => console.error("Bildirim sesi oynatılamadı:", e)); 
         } 
         
-        // 🚨 GÜNCELLENDİ: Mesaj sahibi avatar URL'sini cache'ten (userAvatars) çek
+        // Mesaj sahibi avatar URL'sini cache'ten (userAvatars) çek
         const avatarUrl = userAvatars[mesaj.userId] || DEFAULT_AVATAR_URL;
 
 
@@ -611,22 +601,41 @@ imageUploadInput.addEventListener('change', (event) => {
     }); 
     event.target.value = ''; 
 });
+
+// GÜNCELLENDİ: Özel sohbet başlatma mantığı
 async function startPrivateChat() { 
+    // 1. Kayıtlı kullanıcı kontrolü
+    if (!currentUser || currentUser.isAnonymous) {
+        return alert("Özel sohbet başlatmak için kayıtlı bir kullanıcı olmalısınız.");
+    }
+    
     const otherUserId = prompt("Konuşmak istediğin kişinin KULLANICI ID'sini yaz:"); 
-    if (!otherUserId || otherUserId === currentUser.uid) return; 
+    
+    if (!otherUserId) return; // Kullanıcı prompt'u iptal etti
+
+    // 2. Kendi ID'siyle sohbet başlatma kontrolü
+    if (otherUserId === currentUser.uid) {
+        return alert("Kendi kendine özel sohbet başlatamazsın!");
+    }
     
     const userRef = database.ref('users/' + otherUserId); 
     const snapshot = await userRef.once('value'); 
     
-    if (!snapshot.exists()) return alert("Kullanıcı bulunamadı!"); 
+    // 3. Kullanıcının varlığı ve geçerliliği kontrolü (Anonim kullanıcılar users tablosunda olmaz)
+    if (!snapshot.exists() || !snapshot.val().username) {
+        return alert("Bu ID'ye sahip kayıtlı bir kullanıcı bulunamadı.");
+    }
     
     const otherUserData = snapshot.val(); 
+    
+    // Private chat ID'sini oluştur
     const ids = [currentUser.uid, otherUserId].sort(); 
     const privateChatId = `private-${ids.join('-')}`; 
     
-    const myUsernameSnapshot = await database.ref(`users/${currentUser.uid}`).once('value');
-    const myUsername = myUsernameSnapshot.val().username; 
+    // Kendi kullanıcı adımızı çek (Zaten cache'te veya DOM'da var)
+    const myUsername = document.getElementById('user-display-name').textContent; 
 
+    // Her iki kullanıcının da sohbet listesine ekle
     await database.ref(`users/${currentUser.uid}/chats/${privateChatId}`).set({ withUsername: otherUserData.username }); 
     await database.ref(`users/${otherUserId}/chats/${privateChatId}`).set({ withUsername: myUsername }); 
     
