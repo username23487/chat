@@ -17,7 +17,8 @@
         #chat-app-layout { display: flex; height: 100%; }
         #sidebar { width: 250px; background: #2f3136; display: flex; flex-direction: column; box-sizing: border-box; }
         #chat-list, #online-users-list { list-style: none; padding: 10px; margin: 0; }
-        #chat-list li, #online-users-list li { padding: 10px; cursor: pointer; border-radius: 5px; margin-bottom: 2px; word-break: break-word; font-weight: 500; }
+        #online-users-list li { cursor: pointer; }
+        #chat-list li, #online-users-list li { padding: 10px; border-radius: 5px; margin-bottom: 2px; word-break: break-word; font-weight: 500; }
         #chat-list li.active, #online-users-list li:hover { background: #40444b; }
         #user-info { margin-top: auto; font-size: 12px; background: #292b2f; padding: 10px; }
         #main-chat { flex-grow: 1; display: flex; flex-direction: column; }
@@ -38,37 +39,12 @@
         #mesajInput { flex-grow: 1; padding: 12px; border: none; background: #40444b; color: #dcddde; border-radius: 5px; font-size:16px; }
         .online-dot { height: 10px; width: 10px; background-color: #43b581; border-radius: 50%; display: inline-block; margin-right: 10px; }
         #typing-indicator { height: 20px; padding: 0 20px; font-size: 13px; font-style: italic; color: #72767d; }
-        /* YENİ: Admin Paneli Stilleri */
         #admin-panel { display: none; background: #202225; padding: 10px; border-radius: 5px; margin-top: 15px; }
         #admin-panel h4 { margin-top: 0; }
         #admin-panel button { width: 100%; padding: 8px; margin-top: 5px; background: #d83c3e; color: white; border: none; border-radius: 3px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div id="auth-container"><!-- Auth HTML aynı --></div>
-    <div id="app-container">
-        <div id="chat-app-layout">
-            <div id="sidebar">
-                <h3>Sohbetler</h3><ul id="chat-list"></ul>
-                <div id="member-features">
-                    <button onclick="startPrivateChat()" style="width:100%;padding:10px;border:none;border-radius:5px;background:#40444b;color:white;cursor:pointer;">Özel Sohbet Başlat</button>
-                    <h3 style="margin-top: 20px;">Çevrimiçi</h3><ul id="online-users-list"></ul>
-                </div>
-                <!-- YENİ: Gizli Admin Paneli -->
-                <div id="admin-panel">
-                    <h4>👑 Admin Paneli</h4>
-                    <button onclick="banUser()">Kullanıcı Yasakla</button>
-                    <button onclick="clearChatRoom()">Sohbet Odasını Temizle</button>
-                </div>
-                <div id="user-info">
-                    <p><strong>Hoş geldin,</strong><br><span id="user-display-name"></span></p>
-                    <button onclick="cikisYap()" style="width:100%; margin-top:10px; background: #d83c3e; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ÇIKIŞ YAP</button>
-                </div>
-            </div>
-            <div id="main-chat"><!-- Main Chat HTML aynı --></div>
-        </div>
-    </div>
-    <!-- Diğer HTML ve Scriptler -->
     <div id="auth-container">
         <div class="auth-box"><div id="login-form"><h2>Giriş Yap</h2><input type="email" id="login-email" placeholder="E-posta"><input type="password" id="login-password" placeholder="Şifre"><button onclick="girisYap()">GİRİŞ YAP</button><a onclick="toggleForms()">Hesabın yok mu? Kayıt Ol</a><a onclick="signInAnonymously()" style="margin-top: 25px; color: #72767d;">veya Misafir Olarak Devam Et</a></div><div id="register-form"><h2>Kayıt Ol</h2><input type="text" id="register-username" placeholder="Kullanıcı Adı"><input type="email" id="register-email" placeholder="E-posta"><input type="password" id="register-password" placeholder="Şifre"><button onclick="kayitOl()">KAYIT OL</button><a onclick="toggleForms()">Zaten hesabın var mı? Giriş Yap</a></div></div>
     </div>
@@ -90,81 +66,32 @@
         const notificationSound = document.getElementById('notification-sound'); const authContainer = document.getElementById('auth-container'); const appContainer = document.getElementById('app-container'); const mesajInput = document.getElementById('mesajInput'); const typingIndicator = document.getElementById('typing-indicator');
         let currentUser = null; let currentChatId = null; let typingTimeout = null; let isAdmin = false;
 
-        // --- YENİ ADMİN FONKSİYONLARI ---
-        function banUser() {
-            const userIdToBan = prompt("Yasaklamak istediğin kullanıcının ID'sini gir:");
-            if (userIdToBan) {
-                database.ref('bannedUsers/' + userIdToBan).set(true);
-                alert("Kullanıcı mesaj göndermeye karşı yasaklandı.");
+        function banUser() { const userIdToBan = prompt("Yasaklamak istediğin kullanıcının ID'sini gir:"); if (userIdToBan) { database.ref('bannedUsers/' + userIdToBan).set(true); alert("Kullanıcı mesaj göndermeye karşı yasaklandı."); } }
+        function clearChatRoom() { const chatIdToClear = prompt("Temizlemek istediğin sohbet odasının ID'sini gir (Örn: public_chat):"); if (chatIdToClear && confirm(`'${chatIdToClear}' odasındaki TÜM mesajları silmek istediğine emin misin?`)) { database.ref('chats/' + chatIdToClear).remove(); alert("Sohbet odası temizlendi."); } }
+        function deleteMessage(chatId, messageKey) { if (confirm("Bu mesajı herkes için silmek istediğine emin misin?")) { database.ref(`chats/${chatId}/${messageKey}`).remove(); } }
+        
+        // --- BU FONKSİYON DÜZELTİLDİ ---
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                // Giriş yapılmışsa
+                currentUser = user;
+                isAdmin = (currentUser.email === 'admin@gmail.com');
+                authContainer.style.display = 'none'; // Giriş ekranını gizle
+                appContainer.style.display = 'block'; // Uygulamayı göster
+                initChatApp(user.isAnonymous);
+            } else {
+                // Çıkış yapılmışsa
+                currentUser = null;
+                isAdmin = false;
+                authContainer.style.display = 'flex'; // Giriş ekranını göster
+                appContainer.style.display = 'none'; // Uygulamayı gizle
             }
-        }
-        function clearChatRoom() {
-            const chatIdToClear = prompt("Temizlemek istediğin sohbet odasının ID'sini gir (Örn: public_chat):");
-            if (chatIdToClear && confirm(`'${chatIdToClear}' odasındaki TÜM mesajları silmek istediğine emin misin? Bu geri alınamaz.`)) {
-                database.ref('chats/' + chatIdToClear).remove();
-                alert("Sohbet odası temizlendi.");
-            }
-        }
-        function deleteMessage(chatId, messageKey) {
-            if (confirm("Bu mesajı herkes için silmek istediğine emin misin?")) {
-                database.ref(`chats/${chatId}/${messageKey}`).remove();
-            }
-        }
+        });
 
-        auth.onAuthStateChanged(user => { if (user) { currentUser = user; isAdmin = (currentUser.email === 'admin@gmail.com'); authContainer.style.display = 'none'; appContainer.style.display = 'block'; initChatApp(user.isAnonymous); } else { currentUser = null; isAdmin = false; authContainer.style.display = 'flex'; appContainer.style.display = 'none'; } });
-        function initChatApp(isAnonymous) {
-            document.getElementById('admin-panel').style.display = isAdmin ? 'block' : 'none'; // Admin ise paneli göster
-            const memberFeatures = document.getElementById('member-features'); document.getElementById('chat-list').innerHTML = ''; addChatToList('public_chat', '# Genel Sohbet');
-            if (isAnonymous) { const randomId = Math.floor(1000 + Math.random() * 9000); document.getElementById('user-display-name').textContent = `Misafir-${randomId}`; memberFeatures.style.display = 'none'; loadChat('public_chat', '# Genel Sohbet'); }
-            else { memberFeatures.style.display = 'block'; database.ref('users/' + currentUser.uid).once('value').then(snapshot => { const username = snapshot.val().username; document.getElementById('user-display-name').textContent = username; setupPresence(currentUser.uid, username); }); loadUserChats(); loadChat('public_chat', '# Genel Sohbet'); }
-        }
+        function initChatApp(isAnonymous) { document.getElementById('admin-panel').style.display = isAdmin ? 'block' : 'none'; const memberFeatures = document.getElementById('member-features'); document.getElementById('chat-list').innerHTML = ''; addChatToList('public_chat', '# Genel Sohbet'); if (isAnonymous) { const randomId = Math.floor(1000 + Math.random() * 9000); document.getElementById('user-display-name').textContent = `Misafir-${randomId}`; memberFeatures.style.display = 'none'; loadChat('public_chat', '# Genel Sohbet'); } else { memberFeatures.style.display = 'block'; database.ref('users/' + currentUser.uid).once('value').then(snapshot => { const username = snapshot.val().username; document.getElementById('user-display-name').textContent = username; setupPresence(currentUser.uid, username); }); loadUserChats(); loadChat('public_chat', '# Genel Sohbet'); } }
+        async function mesajGonder() { if (mesajInput.value.trim() && currentUser) { const bannedSnapshot = await database.ref('bannedUsers/' + currentUser.uid).once('value'); if (bannedSnapshot.exists()) { alert("Yasaklandığınız için mesaj gönderemezsiniz."); return; } const username = document.getElementById('user-display-name').textContent; database.ref('chats/' + currentChatId).push({ username: username, userId: currentUser.uid, metin: mesajInput.value, zaman: Date.now() }); database.ref(`typing/${currentChatId}/${currentUser.uid}`).remove(); mesajInput.value = ''; } }
+        function loadChat(chatId, chatName) { if (currentChatId) { database.ref('chats/' + currentChatId).off(); } currentChatId = chatId; const mesajlarDiv = document.getElementById('mesajlar'); mesajlarDiv.innerHTML = ''; document.getElementById('chat-title').textContent = chatName; document.querySelectorAll('#chat-list li').forEach(li => li.classList.remove('active')); document.querySelector(`li[data-chatid="${chatId}"]`).classList.add('active'); setupTypingIndicator(chatId); const chatRef = database.ref('chats/' + chatId); chatRef.orderByChild('zaman').limitToLast(100).on('child_added', (snapshot) => { const mesaj = snapshot.val(); const messageKey = snapshot.key; const div = document.createElement('div'); div.className = "mesaj " + (mesaj.userId === currentUser.uid ? 'sent' : 'received'); const tarih = new Date(mesaj.zaman); const saat = tarih.getHours().toString().padStart(2, '0'); const dakika = tarih.getMinutes().toString().padStart(2, '0'); const zamanMetni = `${saat}:${dakika}`; let adminDeleteButton = ''; if (isAdmin) { adminDeleteButton = `<span class="delete-icon" onclick="deleteMessage('${chatId}', '${messageKey}')">🗑️</span>`; } div.innerHTML = `<div class="mesaj-header"><strong>${mesaj.username}</strong><span class="timestamp">${zamanMetni}</span>${adminDeleteButton}</div><div class="message-bubble">${(mesaj.metin || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`; mesajlarDiv.appendChild(div); mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight; }); }
         
-        // --- GÜNCELLENDİ: MESAJ GÖNDERME (Yasaklı kontrolü eklendi) ---
-        async function mesajGonder() {
-            if (mesajInput.value.trim() && currentUser) {
-                // Mesaj göndermeden önce yasaklı olup olmadığını kontrol et
-                const bannedSnapshot = await database.ref('bannedUsers/' + currentUser.uid).once('value');
-                if (bannedSnapshot.exists()) {
-                    alert("Yasaklandığınız için mesaj gönderemezsiniz.");
-                    return;
-                }
-                const username = document.getElementById('user-display-name').textContent;
-                database.ref('chats/' + currentChatId).push({ username: username, userId: currentUser.uid, metin: mesajInput.value, zaman: Date.now() });
-                database.ref(`typing/${currentChatId}/${currentUser.uid}`).remove();
-                mesajInput.value = '';
-            }
-        }
-        
-        // --- GÜNCELLENDİ: SOHBET YÜKLEME (Admin için silme butonu ekler) ---
-        function loadChat(chatId, chatName) {
-            if (currentChatId) { database.ref('chats/' + currentChatId).off(); }
-            currentChatId = chatId;
-            const mesajlarDiv = document.getElementById('mesajlar');
-            mesajlarDiv.innerHTML = '';
-            document.getElementById('chat-title').textContent = chatName;
-            document.querySelectorAll('#chat-list li').forEach(li => li.classList.remove('active'));
-            document.querySelector(`li[data-chatid="${chatId}"]`).classList.add('active');
-            setupTypingIndicator(chatId);
-            const chatRef = database.ref('chats/' + chatId);
-            chatRef.orderByChild('zaman').limitToLast(100).on('child_added', (snapshot) => {
-                const mesaj = snapshot.val();
-                const messageKey = snapshot.key; // Mesajın özel ID'si
-                const div = document.createElement('div');
-                div.className = "mesaj " + (mesaj.userId === currentUser.uid ? 'sent' : 'received');
-                const tarih = new Date(mesaj.zaman); const saat = tarih.getHours().toString().padStart(2, '0'); const dakika = tarih.getMinutes().toString().padStart(2, '0'); const zamanMetni = `${saat}:${dakika}`;
-                
-                let adminDeleteButton = '';
-                if (isAdmin) {
-                    adminDeleteButton = `<span class="delete-icon" onclick="deleteMessage('${chatId}', '${messageKey}')">🗑️</span>`;
-                }
-                
-                div.innerHTML = `<div class="mesaj-header"><strong>${mesaj.username}</strong><span class="timestamp">${zamanMetni}</span>${adminDeleteButton}</div><div class="message-bubble">${(mesaj.metin || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`;
-                mesajlarDiv.appendChild(div);
-                mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight;
-            });
-        }
-        
-        // --- Diğer Fonksiyonlar (Değişiklik yok) ---
         function kayitOl() { const username = document.getElementById('register-username').value; const email = document.getElementById('register-email').value; const password = document.getElementById('register-password').value; if (!username) return alert('Lütfen bir kullanıcı adı girin!'); auth.createUserWithEmailAndPassword(email, password).then(userCredential => { database.ref('users/' + userCredential.user.uid).set({ username: username, email: email }); }).catch(error => alert('Kayıt başarısız: ' + error.message)); }
         function girisYap() { const email = document.getElementById('login-email').value; const password = document.getElementById('login-password').value; auth.signInWithEmailAndPassword(email, password).catch(error => alert('Giriş başarısız: ' + error.message)); }
         function cikisYap() { auth.signOut(); }
