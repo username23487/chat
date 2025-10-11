@@ -412,10 +412,17 @@ function setupPresence(userId, username) {
                     
                     // Avatar URL'sini cache'ten (userAvatars) al
                     const avatar = userAvatars[uId] || DEFAULT_AVATAR_URL;
+                    
+                    // DÜZELTİLDİ: Username'deki tırnak işaretlerini kaçırıyoruz ve onclick'i daha güvenli atıyoruz.
+                    const sanitizedUsername = user.username.replace(/'/g, "\\'"); 
 
-                    // HTML'i avatarı gösterecek şekilde güncelle
-                    li.innerHTML = `<img class="avatar" src="${avatar}" alt="${user.username}" style="width: 25px; height: 25px; border-radius: 50%; object-fit: cover; margin-right: 8px;"> ${user.username}`;
-                    li.onclick = () => showUserProfile(uId, user.username); 
+                    li.innerHTML = `
+                        <div class="user-list-item" onclick="showUserProfile('${uId}', '${sanitizedUsername}')">
+                            <img class="avatar" src="${avatar}" alt="${user.username}" style="width: 25px; height: 25px; border-radius: 50%; object-fit: cover; margin-right: 8px;"> 
+                            <span>${user.username}</span>
+                        </div>
+                    `;
+                    
                     onlineUsersList.appendChild(li); 
                 } 
             }); 
