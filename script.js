@@ -20,7 +20,7 @@ const modalOverlay = document.getElementById('modal-overlay');
 const settingsModal = document.getElementById('settings-modal');
 const newUsernameInput = document.getElementById('new-username'); 
 
-// YENİ: AVATAR İÇİN ELEMENTLER VE SABİTLER
+// AVATAR İÇİN ELEMENTLER VE SABİTLER
 const avatarUploadInput = document.getElementById('avatar-upload-input');
 const currentAvatarPreview = document.getElementById('current-avatar-preview');
 const DEFAULT_AVATAR_URL = "https://i.ibb.co/6g92Y9F/default-avatar.png"; // Varsayılan avatar URL'si
@@ -29,6 +29,8 @@ let currentUser = null;
 let currentChatId = null;
 let typingTimeout = null;
 let blockList = {};
+// Bu objeyi kullanıcıların avatar URL'lerini tutmak için kullanacağız
+let userAvatars = {};
 
 // Yönetici e-postalarını burada tanımlıyoruz. 
 const adminEmails = ["admin@gmail.com"];
@@ -237,15 +239,17 @@ function initChatApp(isAnonymous) {
         document.getElementById('image-upload-label').style.display = 'block'; 
         document.getElementById('my-id-display').textContent = currentUser.uid; 
         
-        // Firebase Auth'taki displayName'i kullan, yoksa DB'den al
         let initialUsername = currentUser.displayName || 'Kullanıcı';
 
         database.ref('users/' + currentUser.uid).once('value').then(snapshot => { 
             const userData = snapshot.val() || {}; 
-            // Eğer auth displayName'i yoksa, DB'den alınan kullanıcı adını kullan
             initialUsername = userData.username || initialUsername;
             document.getElementById('user-display-name').textContent = initialUsername; 
             blockList = userData.blockedUsers || {}; 
+
+            // YENİ: Başlangıçta kendi avatarımızı userAvatars objesine ekleyelim
+            userAvatars[currentUser.uid] = userData.avatarUrl || DEFAULT_AVATAR_URL; 
+            
             setupPresence(currentUser.uid, initialUsername); 
         }); 
         loadUserChats(); 
@@ -261,14 +265,15 @@ function kayitOl() {
     if (!username) return alert('Lütfen bir kullanıcı adı girin!'); 
 
     auth.createUserWithEmailAndPassword(email, password).then(userCredential => { 
-        // Kullanıcı adını Firebase Auth profiline de kaydet
+        // Kullanıcı adı ve default avatarı Firebase Auth profiline kaydet
         return userCredential.user.updateProfile({
             displayName: username
         }).then(() => {
-            // Kullanıcı adını Database'e kaydet
+            // Kullanıcı adı ve default avatarı Database'e kaydet
             database.ref('users/' + userCredential.user.uid).set({ 
                 username: username, 
-                email: email 
+                email: email,
+                avatarUrl: DEFAULT_AVATAR_URL // Kayıt olurken varsayılan avatarı ata
             });
         });
     }).catch(error => alert('Kayıt başarısız: ' + error.message)); 
@@ -302,11 +307,9 @@ function updateUsername() {
         return alert("Kullanıcı adı en az 3 karakter olmalıdır.");
     }
 
-    // 1. Firebase Auth'taki displayName'i güncelle
     currentUser.updateProfile({
         displayName: newUsername
     }).then(() => {
-        // 2. Database'deki kullanıcı adını güncelle
         return database.ref(`users/${currentUser.uid}`).update({
             username: newUsername
         });
@@ -321,7 +324,7 @@ function updateUsername() {
     });
 }
 
-// YENİ: PROFİL FOTOĞRAFI YÜKLEME VE GÜNCELLEME MANTIĞI
+// PROFİL FOTOĞRAFI YÜKLEME VE GÜNCELLEME MANTIĞI
 avatarUploadInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (!file || !currentUser || currentUser.isAnonymous) return;
@@ -334,7 +337,6 @@ avatarUploadInput.addEventListener('change', (event) => {
     const formData = new FormData();
     formData.append('image', file);
     
-    // Yükleniyor bilgisi
     currentAvatarPreview.style.opacity = 0.5;
 
     fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
@@ -344,12 +346,12 @@ avatarUploadInput.addEventListener('change', (event) => {
         if (result.success) {
             const newAvatarUrl = result.data.url;
             
-            // 1. Firebase Database'e kaydet
             return database.ref(`users/${currentUser.uid}`).update({
                 avatarUrl: newAvatarUrl
             }).then(() => {
-                // 2. DOM'u güncelle
+                // DOM'u ve cache'i (userAvatars objesi) güncelle
                 currentAvatarPreview.src = newAvatarUrl;
+                userAvatars[currentUser.uid] = newAvatarUrl; 
                 alert("Profil fotoğrafı başarıyla güncellendi!");
             });
         } else {
@@ -359,38 +361,67 @@ avatarUploadInput.addEventListener('change', (event) => {
         alert('Resim yüklenirken bir ağ hatası oluştu: ' + error);
     }).finally(() => {
         currentAvatarPreview.style.opacity = 1;
-        event.target.value = ''; // Inputu temizle
+        event.target.value = ''; 
     });
 });
 
-
+// GÜNCELLENDİ: Çevrimiçi listesi ve avatar çekme mantığı
 function setupPresence(userId, username) { 
     const userStatusRef = database.ref('/status/' + userId); 
     const isOnlineForDatabase = { state: 'online', username: username }; 
+    
     database.ref('.info/connected').on('value', (snap) => { 
         if (snap.val() === false) { 
-            userStatusRef.set({ state: 'offline', username: username }); 
+            // Bu satır kaldırıldı. onDisconnect zaten offline yapıyor.
+            // userStatusRef.set({ state: 'offline', username: username }); 
             return; 
         } 
         userStatusRef.onDisconnect().set({ state: 'offline', username: username }).then(() => { 
             userStatusRef.set(isOnlineForDatabase); 
         }); 
     }); 
+    
     const onlineUsersRef = database.ref('/status').orderByChild('state').equalTo('online'); 
-    onlineUsersRef.on('value', (snapshot) => { 
-        const onlineUsersList = document.getElementById('online-users-list'); 
-        onlineUsersList.innerHTML = ''; 
-        snapshot.forEach((child) => { 
-            const user = child.val(); 
-            const uId = child.key; 
-            if (user.username && uId !== currentUser.uid) { // Kendi ismini online listesinde gösterme
-                const li = document.createElement('li'); 
-                li.innerHTML = `<span class="online-dot"></span> ${user.username}`; 
-                li.onclick = () => showUserProfile(uId, user.username); 
-                onlineUsersList.appendChild(li); 
-            } 
-        }); 
-    }); 
+    
+    // Gerekli: userAvatars objesini önceden doldurmak için tüm kullanıcıları çek
+    database.ref('users').once('value').then(allUsersSnapshot => {
+        allUsersSnapshot.forEach(userSnap => {
+            const uId = userSnap.key;
+            const userData = userSnap.val();
+            userAvatars[uId] = userData.avatarUrl || DEFAULT_AVATAR_URL;
+        });
+        
+        // Asıl çevrimiçi listesini dinle
+        onlineUsersRef.on('value', (snapshot) => { 
+            const onlineUsersList = document.getElementById('online-users-list'); 
+            onlineUsersList.innerHTML = ''; 
+            snapshot.forEach((child) => { 
+                const user = child.val(); 
+                const uId = child.key; 
+                if (user.username && uId !== currentUser.uid) { 
+                    const li = document.createElement('li'); 
+                    
+                    // Avatar URL'sini cache'ten (userAvatars) al
+                    const avatar = userAvatars[uId] || DEFAULT_AVATAR_URL;
+
+                    // HTML'i avatarı gösterecek şekilde güncelle
+                    li.innerHTML = `<img class="avatar" src="${avatar}" alt="${user.username}" style="width: 25px; height: 25px; border-radius: 50%; object-fit: cover; margin-right: 8px;"> ${user.username}`;
+                    li.onclick = () => showUserProfile(uId, user.username); 
+                    onlineUsersList.appendChild(li); 
+                } 
+            }); 
+        });
+    });
+    // Hata oluşumunu engellemek için, user/avatarUrl değişikliklerini de dinleyebiliriz (isteğe bağlı)
+    database.ref('users').on('child_changed', (snapshot) => {
+        const uId = snapshot.key;
+        const userData = snapshot.val();
+        if(userData.avatarUrl) {
+            userAvatars[uId] = userData.avatarUrl;
+        }
+        // Çevrimiçi listesini tekrar render etmek gerekebilir
+        onlineUsersRef.once('value', () => {}); 
+    });
 }
 mesajInput.addEventListener('input', () => { 
     if (!currentUser || !currentChatId || currentUser.isAnonymous) return; 
@@ -435,7 +466,7 @@ function loadUserChats() {
     }); 
 }
 
-// GÜNCELLENDİ: Mesaj çekilirken kullanıcının avatar URL'si çekilir ve HTML'e eklenir.
+// GÜNCELLENDİ: Mesaj çekilirken avatar URL'si cache'ten çekilir
 function loadChat(chatId, chatName) { 
     if (currentChatId) { database.ref('chats/' + currentChatId).off(); } 
     currentChatId = chatId; 
@@ -444,7 +475,6 @@ function loadChat(chatId, chatName) {
     mesajlarDiv.innerHTML = ''; 
     document.getElementById('chat-title').textContent = chatName; 
     
-    // Aktif sohbeti işaretle
     document.querySelectorAll('#chat-list li').forEach(li => li.classList.remove('active')); 
     const activeChatLi = document.querySelector(`li[data-chatid="${chatId}"]`);
     if(activeChatLi) {
@@ -454,7 +484,6 @@ function loadChat(chatId, chatName) {
     setupTypingIndicator(chatId); 
     const chatRef = database.ref('chats/' + chatId); 
     
-    // Mesaj silindiğinde DOM'dan kaldırmak için child_removed dinleyicisi eklenir
     chatRef.on('child_removed', (snapshot) => {
         const removedMesajId = snapshot.key;
         const element = document.querySelector(`.mesaj[data-mesaj-id="${removedMesajId}"]`);
@@ -463,8 +492,8 @@ function loadChat(chatId, chatName) {
         }
     });
 
-    // Mesajları çekmeden önce, her bir mesaj için avatarı çekmek üzere async/await kullanıyoruz
-    chatRef.orderByChild('zaman').limitToLast(100).on('child_added', async (snapshot) => { 
+    // Avatar cache'i dolu olduğu için artık async await kullanmaya gerek yok, performans daha iyi olacaktır.
+    chatRef.orderByChild('zaman').limitToLast(100).on('child_added', (snapshot) => { 
         const mesaj = snapshot.val();
         const mesajId = snapshot.key; 
         const mesajSahibiMi = currentUser && mesaj.userId === currentUser.uid;
@@ -474,12 +503,9 @@ function loadChat(chatId, chatName) {
             notificationSound.play().catch(e => console.error("Bildirim sesi oynatılamadı:", e)); 
         } 
         
-        // 🚨 YENİ: Mesaj sahibi avatar URL'sini çek
-        let avatarUrl = DEFAULT_AVATAR_URL;
-        if (mesaj.userId) {
-            const userSnapshot = await database.ref(`users/${mesaj.userId}/avatarUrl`).once('value');
-            avatarUrl = userSnapshot.val() || DEFAULT_AVATAR_URL;
-        }
+        // 🚨 GÜNCELLENDİ: Mesaj sahibi avatar URL'sini cache'ten (userAvatars) çek
+        const avatarUrl = userAvatars[mesaj.userId] || DEFAULT_AVATAR_URL;
+
 
         const div = document.createElement('div'); 
         div.className = "mesaj " + (mesajSahibiMi ? 'sent' : 'received'); 
@@ -500,12 +526,10 @@ function loadChat(chatId, chatName) {
             mesajIcerigi = metniLinkeCevir(temizMetin);
         }
 
-        // 1. MESAJ SAHİBİ KENDİ MESAJINI SİLEBİLİR
         if (mesajSahibiMi && !currentUser.isAnonymous) {
             silButonuHTML = `<button class="sil-butonu" data-id="${mesajId}">🗑️</button>`;
         }
         
-        // 2. ADMİN, HERHANGİ BİR MESAJI SİLEBİLİR
         let adminSilButonuHTML = '';
         if (isAdmin && !mesajSahibiMi) { 
              adminSilButonuHTML = `<span class="admin-delete-btn" onclick="deleteMessage('${chatId}', '${mesajId}')">🗑️</span>`;
@@ -558,7 +582,6 @@ imageUploadInput.addEventListener('change', (event) => {
     if (!file || !currentUser || currentUser.isAnonymous) return; 
     if (!file.type.startsWith('image/')){ return alert("Lütfen sadece resim dosyası yükleyin."); } 
     
-    // **ÖNEMLİ:** IMGBB_API_KEY'in config.js'de tanımlı olduğundan emin olun.
     if (typeof IMGBB_API_KEY === 'undefined') {
         return alert("HATA: IMGBB_API_KEY config.js dosyanızda tanımlı değil!");
     }
@@ -601,11 +624,9 @@ async function startPrivateChat() {
     const ids = [currentUser.uid, otherUserId].sort(); 
     const privateChatId = `private-${ids.join('-')}`; 
     
-    // Kendi kullanıcı adımızı çek
     const myUsernameSnapshot = await database.ref(`users/${currentUser.uid}`).once('value');
     const myUsername = myUsernameSnapshot.val().username; 
 
-    // Her iki kullanıcının da sohbet listesine ekle
     await database.ref(`users/${currentUser.uid}/chats/${privateChatId}`).set({ withUsername: otherUserData.username }); 
     await database.ref(`users/${otherUserId}/chats/${privateChatId}`).set({ withUsername: myUsername }); 
     
