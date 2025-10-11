@@ -1,1 +1,48 @@
-
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: #36393f; color: #dcddde; overflow: hidden; }
+#auth-container { display: flex; justify-content: center; align-items: center; height: 100vh; }
+.auth-box { background: #36393f; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); width: 320px; text-align: center; border: 1px solid #222; }
+.auth-box h2 { margin-top: 0; color: #fff; }
+.auth-box input { background: #202225; border: 1px solid #111; color: #dcddde; }
+.auth-box input, .auth-box button { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+.auth-box button { background: #5865f2; color: white; cursor: pointer; border: none; }
+.auth-box a { color: #00a8fc; text-decoration: none; cursor: pointer; display: block; margin-top: 15px; }
+#register-form { display: none; }
+#app-container { display: none; height: 100vh; }
+#chat-app-layout { display: flex; height: 100%; }
+#sidebar { width: 250px; background: #2f3136; display: flex; flex-direction: column; box-sizing: border-box; }
+#chat-list, #online-users-list { list-style: none; padding: 10px; margin: 0; }
+#online-users-list li { cursor: pointer; }
+#chat-list li, #online-users-list li { padding: 10px; border-radius: 5px; margin-bottom: 2px; word-break: break-word; font-weight: 500; }
+#chat-list li.active, #online-users-list li:hover { background: #40444b; }
+#user-info { margin-top: auto; font-size: 12px; background: #292b2f; padding: 10px; }
+#my-id-container { background: #202225; padding: 8px; border-radius: 5px; margin-top: 15px; cursor: pointer; }
+#main-chat { flex-grow: 1; display: flex; flex-direction: column; }
+#chat-header { display:flex; justify-content:space-between; align-items:center; padding: 10px 20px; box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
+#video-call-button { font-size: 24px; background: none; border: none; color: #b9bbbe; cursor: pointer; margin-left: 15px; display: none; }
+#mesajlar { flex-grow: 1; overflow-y: scroll; padding: 0 20px; display: flex; flex-direction: column; }
+.mesaj { max-width: 80%; margin-top: 17px; display: flex; flex-direction: column; }
+.mesaj.sent { align-self: flex-end; align-items: flex-end; }
+.mesaj.received { align-self: flex-start; align-items: flex-start; }
+.message-bubble { padding: 8px 12px; border-radius: 15px; line-height: 1.4; max-width: 100%; word-wrap: break-word; }
+.mesaj.sent .message-bubble { background: #5865f2; }
+.mesaj.received .message-bubble { background: #40444b; }
+.message-bubble a { color: #00a8fc; text-decoration: underline; }
+.mesaj-header { display: flex; align-items: baseline; margin-bottom: 4px; }
+.mesaj strong { color: #fff; font-size: 14px; }
+.mesaj .timestamp { font-size: 11px; color: #72767d; margin-left: 8px; }
+.mesaj img { max-width: 100%; width: 300px; border-radius: 10px; margin-top: 5px; cursor: pointer; }
+#input-area { display: flex; align-items: center; padding: 20px; background: #2f3136; }
+#mesajInput { flex-grow: 1; padding: 12px; border: none; background: #40444b; color: #dcddde; border-radius: 5px; font-size:16px; }
+.online-dot { height: 10px; width: 10px; background-color: #43b581; border-radius: 50%; display: inline-block; margin-right: 10px; }
+#typing-indicator { height: 20px; padding: 0 20px; font-size: 13px; font-style: italic; color: #72767d; }
+#emoji-button, #image-upload-label { font-size: 24px; background: none; border: none; color: #b9bbbe; cursor: pointer; padding: 0 15px; }
+#image-upload-input { display: none; }
+#emoji-picker { display: none; position: absolute; bottom: 80px; left: 270px; background: #2f3136; border: 1px solid #222; border-radius: 8px; padding: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.3); max-width: 250px; z-index: 100;}
+#emoji-picker span { cursor: pointer; font-size: 20px; padding: 5px; }
+#modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; }
+#profile-modal { background: #2f3136; padding: 25px; border-radius: 8px; width: 350px; text-align: center; }
+#profile-modal h2 { margin-top: 0; }
+#profile-modal p { word-break: break-all; background: #202225; padding: 10px; border-radius: 5px; }
+.profile-actions button { width: 100%; padding: 10px; border-radius: 5px; border: none; font-size: 16px; cursor: pointer; margin-top: 10px; }
+.profile-actions .block-btn { background: #d83c3e; color: white; }
+.profile-actions .report-btn { background: #faa61a; color: white; }
