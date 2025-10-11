@@ -21,10 +21,6 @@ let currentChatId = null;
 let typingTimeout = null;
 let blockList = {};
 
-// YENİ: Yönetici e-postalarını burada tanımlıyoruz.
-const adminEmails = ["admin@gmail.com"];
-let isAdmin = false; // YENİ: Kullanıcının admin olup olmadığını tutacak değişken
-
 const emojis = ['😀', '😂', '😊', '😍', '🤔', '😎', '😭', '😡', '👍', '👎', '❤️', '🔥', '🎉', '👋'];
 
 function initEmojiPicker() { emojiPicker.innerHTML = ''; emojis.forEach(emoji => { const span = document.createElement('span'); span.textContent = emoji; span.onclick = () => { mesajInput.value += emoji; emojiPicker.style.display = 'none'; mesajInput.focus(); }; emojiPicker.appendChild(span); }); emojiButton.onclick = () => { emojiPicker.style.display = emojiPicker.style.display === 'block' ? 'none' : 'block'; }; }
@@ -36,31 +32,7 @@ function startVideoCall() { if (!currentChatId || currentChatId === 'public_chat
 function copyMyId() { if (!currentUser || currentUser.isAnonymous) return; navigator.clipboard.writeText(currentUser.uid).then(() => { alert("Kullanıcı ID'n panoya kopyalandı!"); }); }
 function signInAnonymously() { auth.signInAnonymously().catch(error => alert("Anonim giriş başarısız: " + error.message)); }
 
-auth.onAuthStateChanged(user => { 
-    if (user) { 
-        currentUser = user; 
-        
-        // YENİ: Giriş yapan kullanıcının admin olup olmadığını kontrol et
-        if (user.email && adminEmails.includes(user.email)) {
-            isAdmin = true;
-            console.log("Admin girişi yapıldı.");
-        } else {
-            isAdmin = false;
-        }
-
-        authContainer.style.display = 'none'; 
-        appContainer.style.display = 'block'; 
-        initChatApp(user.isAnonymous); 
-    } else { 
-        if (currentUser && !currentUser.isAnonymous) { 
-            database.ref(`status/${currentUser.uid}`).set({ state: 'offline' }); 
-        } 
-        currentUser = null;
-        isAdmin = false; // YENİ: Çıkış yapıldığında admin durumunu sıfırla
-        authContainer.style.display = 'flex'; 
-        appContainer.style.display = 'none'; 
-    } 
-});
+auth.onAuthStateChanged(user => { if (user) { currentUser = user; authContainer.style.display = 'none'; appContainer.style.display = 'block'; initChatApp(user.isAnonymous); } else { if (currentUser && !currentUser.isAnonymous) { database.ref(`status/${currentUser.uid}`).set({ state: 'offline' }); } currentUser = null; authContainer.style.display = 'flex'; appContainer.style.display = 'none'; } });
 
 function initChatApp(isAnonymous) { const memberFeatures = document.getElementById('member-features'); document.getElementById('chat-list').innerHTML = ''; addChatToList('public_chat', '# Genel Sohbet'); initEmojiPicker(); if (isAnonymous) { const randomId = Math.floor(1000 + Math.random() * 9000); document.getElementById('user-display-name').textContent = `Misafir-${randomId}`; memberFeatures.style.display = 'none'; document.getElementById('image-upload-label').style.display = 'none'; loadChat('public_chat', '# Genel Sohbet'); } else { memberFeatures.style.display = 'block'; document.getElementById('image-upload-label').style.display = 'block'; document.getElementById('my-id-display').textContent = currentUser.uid; database.ref('users/' + currentUser.uid).once('value').then(snapshot => { const userData = snapshot.val() || {}; document.getElementById('user-display-name').textContent = userData.username || 'Kullanıcı'; blockList = userData.blockedUsers || {}; setupPresence(currentUser.uid, userData.username); }); loadUserChats(); loadChat('public_chat', '# Genel Sohbet'); } }
 function kayitOl() { const username = document.getElementById('register-username').value; const email = document.getElementById('register-email').value; const password = document.getElementById('register-password').value; if (!username) return alert('Lütfen bir kullanıcı adı girin!'); auth.createUserWithEmailAndPassword(email, password).then(userCredential => { database.ref('users/' + userCredential.user.uid).set({ username: username, email: email }); }).catch(error => alert('Kayıt başarısız: ' + error.message)); }
@@ -72,78 +44,7 @@ mesajInput.addEventListener('input', () => { if (!currentUser || !currentChatId 
 function setupTypingIndicator(chatId) { if(currentChatId) { database.ref(`typing/${currentChatId}`).off(); } const typingRef = database.ref(`typing/${chatId}`); typingRef.on('value', snapshot => { const typers = snapshot.val(); if (typers) { const typerIds = Object.keys(typers).filter(id => id !== currentUser.uid); if (typerIds.length > 0) { const names = typerIds.map(id => typers[id]).join(', '); typingIndicator.textContent = `${names} yazıyor...`; } else { typingIndicator.textContent = ''; } } else { typingIndicator.textContent = ''; } }); }
 function addChatToList(chatId, chatName) { const li = document.createElement('li'); li.textContent = chatName; li.dataset.chatid = chatId; li.onclick = () => loadChat(chatId, chatName); document.getElementById('chat-list').appendChild(li); }
 function loadUserChats() { const userChatsRef = database.ref(`users/${currentUser.uid}/chats`); userChatsRef.on('child_added', snapshot => { addChatToList(snapshot.key, `🔒 ${snapshot.val().withUsername}`); }); }
-
-// DEĞİŞTİ: Mesajları yükleyen fonksiyonu güncelledik.
-function loadChat(chatId, chatName) { 
-    if (currentChatId) { 
-        database.ref('chats/' + currentChatId).off(); 
-    } 
-    currentChatId = chatId; 
-    videoCallButton.style.display = chatId.startsWith('private-') ? 'inline-block' : 'none'; 
-    const mesajlarDiv = document.getElementById('mesajlar'); 
-    mesajlarDiv.innerHTML = ''; 
-    document.getElementById('chat-title').textContent = chatName; 
-    document.querySelectorAll('#chat-list li').forEach(li => li.classList.remove('active')); 
-    document.querySelector(`li[data-chatid="${chatId}"]`).classList.add('active'); 
-    setupTypingIndicator(chatId); 
-    const chatRef = database.ref('chats/' + chatId); 
-    chatRef.orderByChild('zaman').limitToLast(100).on('child_added', (snapshot) => { 
-        const mesaj = snapshot.val();
-        const mesajKey = snapshot.key; // YENİ: Mesajın unique ID'sini alıyoruz (silme işlemi için)
-
-        if (blockList[mesaj.userId]) { 
-            return; 
-        } 
-        if (currentUser && mesaj.userId !== currentUser.uid && document.hidden) { 
-            notificationSound.play().catch(e => console.error("Bildirim sesi oynatılamadı:", e)); 
-        } 
-        const div = document.createElement('div'); 
-        div.className = "mesaj " + (mesaj.userId === currentUser.uid ? 'sent' : 'received'); 
-        
-        const tarih = new Date(mesaj.zaman); 
-        const saat = tarih.getHours().toString().padStart(2, '0'); 
-        const dakika = tarih.getMinutes().toString().padStart(2, '0'); 
-        const zamanMetni = `${saat}:${dakika}`; 
-        
-        let mesajIcerigi = ''; 
-        if (mesaj.type === 'image') { 
-            mesajIcerigi = `<img src="${mesaj.imageUrl}" alt="Yüklenen resim">`; 
-        } else { 
-            mesajIcerigi = (mesaj.metin || "").replace(/</g, "&lt;").replace(/>/g, "&gt;"); 
-        } 
-
-        // YENİ: Admin ise silme butonu ekle
-        let deleteButtonHTML = '';
-        if (isAdmin) {
-            // Butona tıklandığında `deleteMessage` fonksiyonunu çağırıyoruz.
-            // Parametre olarak sohbet ID'si ve mesaj ID'sini gönderiyoruz.
-            deleteButtonHTML = `<span class="delete-btn" onclick="deleteMessage('${chatId}', '${mesajKey}')">🗑️</span>`;
-        }
-        
-        div.innerHTML = `<div class="mesaj-header"><strong>${mesaj.username}</strong>${deleteButtonHTML}<span class="timestamp">${zamanMetni}</span></div><div class="message-bubble">${mesajIcerigi}</div>`; 
-        mesajlarDiv.appendChild(div); 
-        mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight; 
-    }); 
-}
-
-// YENİ: Mesaj silme fonksiyonu
-function deleteMessage(chatId, messageKey) {
-    if (!isAdmin) {
-        console.log("Yetkisiz silme denemesi.");
-        return;
-    }
-    if (confirm("Bu mesajı silmek istediğinizden emin misiniz?")) {
-        database.ref(`chats/${chatId}/${messageKey}`).remove()
-            .then(() => {
-                console.log("Mesaj başarıyla silindi.");
-                loadChat(chatId, document.getElementById('chat-title').textContent); // Ekranı yenile
-            })
-            .catch((error) => {
-                console.error("Mesaj silinirken hata oluştu: ", error);
-            });
-    }
-}
-
+function loadChat(chatId, chatName) { if (currentChatId) { database.ref('chats/' + currentChatId).off(); } currentChatId = chatId; videoCallButton.style.display = chatId.startsWith('private-') ? 'inline-block' : 'none'; const mesajlarDiv = document.getElementById('mesajlar'); mesajlarDiv.innerHTML = ''; document.getElementById('chat-title').textContent = chatName; document.querySelectorAll('#chat-list li').forEach(li => li.classList.remove('active')); document.querySelector(`li[data-chatid="${chatId}"]`).classList.add('active'); setupTypingIndicator(chatId); const chatRef = database.ref('chats/' + chatId); chatRef.orderByChild('zaman').limitToLast(100).on('child_added', (snapshot) => { const mesaj = snapshot.val(); if (blockList[mesaj.userId]) { return; } if (currentUser && mesaj.userId !== currentUser.uid && document.hidden) { notificationSound.play().catch(e => console.error("Bildirim sesi oynatılamadı:", e)); } const div = document.createElement('div'); div.className = "mesaj " + (mesaj.userId === currentUser.uid ? 'sent' : 'received'); const tarih = new Date(mesaj.zaman); const saat = tarih.getHours().toString().padStart(2, '0'); const dakika = tarih.getMinutes().toString().padStart(2, '0'); const zamanMetni = `${saat}:${dakika}`; let mesajIcerigi = ''; if (mesaj.type === 'image') { mesajIcerigi = `<img src="${mesaj.imageUrl}" alt="Yüklenen resim">`; } else { mesajIcerigi = (mesaj.metin || "").replace(/</g, "&lt;").replace(/>/g, "&gt;"); } div.innerHTML = `<div class="mesaj-header"><strong>${mesaj.username}</strong><span class="timestamp">${zamanMetni}</span></div><div class="message-bubble">${mesajIcerigi}</div>`; mesajlarDiv.appendChild(div); mesajlarDiv.scrollTop = mesajlarDiv.scrollHeight; }); }
 function clearChatScreen() { document.getElementById('mesajlar').innerHTML = ''; }
 function mesajGonder() { if (mesajInput.value.trim() && currentUser) { const username = document.getElementById('user-display-name').textContent; database.ref('chats/' + currentChatId).push({ username: username, userId: currentUser.uid, metin: mesajInput.value, type:'text', zaman: Date.now() }); database.ref(`typing/${currentChatId}/${currentUser.uid}`).remove(); mesajInput.value = ''; } }
 imageUploadInput.addEventListener('change', (event) => { const file = event.target.files[0]; if (!file || !currentUser || currentUser.isAnonymous) return; if (!file.type.startsWith('image/')){ return alert("Lütfen sadece resim dosyası yükleyin."); } const formData = new FormData(); formData.append('image', file); fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData }).then(response => response.json()).then(result => { if (result.success) { const imageUrl = result.data.url; const username = document.getElementById('user-display-name').textContent; database.ref('chats/' + currentChatId).push({ username: username, userId: currentUser.uid, imageUrl: imageUrl, type: 'image', zaman: Date.now() }); } else { alert('Resim yüklenemedi: ' + result.error.message); } }).catch(error => { alert('Resim yüklenirken bir ağ hatası oluştu.'); }); event.target.value = ''; });
