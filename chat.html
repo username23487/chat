@@ -72,6 +72,7 @@
     <div id="modal-overlay">
         <div id="profile-modal">
             <h2 id="profile-username"></h2>
+            <img id="profile-avatar-display" src="default-avatar.png" alt="Kullanıcı Profil Fotoğrafı" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 15px;">
             <p><strong>Kullanıcı ID:</strong><br><span id="profile-userid"></span></p>
             <div class="profile-actions">
                 <button id="profile-block-btn" class="block-btn">Engelle</button>
@@ -88,6 +89,12 @@
                 <button onclick="updateUsername()" style="width: 100%; margin-bottom: 20px; background: #43b581; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer;">Kaydet</button>
             </div>
             
+            <div id="avatar-settings" style="margin-top: 25px;">
+                <label style="display: block; margin-bottom: 15px; font-weight: bold;">Profil Fotoğrafı Değiştir</label>
+                <img id="current-avatar-preview" src="default-avatar.png" alt="Mevcut Profil Fotoğrafı" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; cursor: pointer;">
+                <label for="avatar-upload-input" style="background: #4f545c; color: white; padding: 10px; border-radius: 5px; cursor: pointer; display: block;">Yeni Fotoğraf Yükle</label>
+                <input type="file" id="avatar-upload-input" accept="image/*" style="display: none;">
+            </div>
             <button onclick="closeSettingsModal()" style="margin-top:20px; background: #40444b; color: white; padding: 10px; border-radius: 5px; border: none; cursor: pointer; width: 100%;">Kapat</button>
         </div>
 

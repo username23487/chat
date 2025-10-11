@@ -16,9 +16,14 @@ const imageUploadInput = document.getElementById('image-upload-input');
 const videoCallButton = document.getElementById('video-call-button');
 const modalOverlay = document.getElementById('modal-overlay');
 
-// KULLANICI ADI DEĞİŞTİRME İÇİN YENİ ELEMENTLER
+// KULLANICI ADI DEĞİŞTİRME İÇİN ELEMENTLER
 const settingsModal = document.getElementById('settings-modal');
 const newUsernameInput = document.getElementById('new-username'); 
+
+// YENİ: AVATAR İÇİN ELEMENTLER VE SABİTLER
+const avatarUploadInput = document.getElementById('avatar-upload-input');
+const currentAvatarPreview = document.getElementById('current-avatar-preview');
+const DEFAULT_AVATAR_URL = "https://i.ibb.co/6g92Y9F/default-avatar.png"; // Varsayılan avatar URL'si
 
 let currentUser = null;
 let currentChatId = null;
@@ -47,8 +52,17 @@ function initEmojiPicker() {
         emojiPicker.style.display = emojiPicker.style.display === 'block' ? 'none' : 'block'; 
     }; 
 }
+
+// GÜNCELLENDİ: Profil modalında avatarı göster
 function showUserProfile(userId, username) { 
     if (userId === currentUser.uid) return; 
+    
+    // Avatarı çek
+    database.ref(`users/${userId}/avatarUrl`).once('value').then(snapshot => {
+        const avatarUrl = snapshot.val() || DEFAULT_AVATAR_URL;
+        document.getElementById('profile-avatar-display').src = avatarUrl;
+    });
+
     document.getElementById('profile-modal').style.display = 'block';
     document.getElementById('profile-username').textContent = username; 
     document.getElementById('profile-userid').textContent = userId; 
@@ -56,6 +70,7 @@ function showUserProfile(userId, username) {
     document.getElementById('profile-report-btn').onclick = () => reportUser(userId, username); 
     modalOverlay.style.display = 'flex'; 
 }
+
 function closeProfileModal() { 
     document.getElementById('profile-modal').style.display = 'none';
     if (settingsModal.style.display === 'none') {
@@ -63,10 +78,18 @@ function closeProfileModal() {
     }
 }
 
-// AYARLAR MODAL FONKSİYONLARI
+// GÜNCELLENDİ: Ayarlar modalı açıldığında mevcut avatarı ve kullanıcı adını göster
 function openSettingsModal() {
-    if (!currentUser || currentUser.isAnonymous) return alert("Bu ayarı değiştirmek için kayıtlı bir kullanıcı olmalısın.");
+    if (!currentUser || currentUser.isAnonymous) return alert("Bu ayarı değiştirmek için kayıtlı bir kullanıcı olmalısınız.");
+    
     newUsernameInput.value = document.getElementById('user-display-name').textContent; 
+    
+    // Mevcut avatarı yükle
+    database.ref(`users/${currentUser.uid}/avatarUrl`).once('value').then(snapshot => {
+        const avatarUrl = snapshot.val() || DEFAULT_AVATAR_URL;
+        currentAvatarPreview.src = avatarUrl;
+    });
+
     document.getElementById('profile-modal').style.display = 'none';
     settingsModal.style.display = 'block'; 
     modalOverlay.style.display = 'flex';
@@ -139,7 +162,7 @@ function metniLinkeCevir(metin) {
 // MESAJ SİLME İÇİN FONKSİYON (Sadece mesaj sahibi silebilir)
 function mesajSil(mesajId) {
     if (!currentUser || currentUser.isAnonymous) {
-        return alert("Bu işlemi yapmak için giriş yapmalıssın.");
+        return alert("Bu işlemi yapmak için giriş yapmalısınız.");
     }
     
     if (confirm("Bu mesajı kalıcı olarak silmek istediğine emin misin?")) {
@@ -153,7 +176,7 @@ function mesajSil(mesajId) {
     }
 }
 
-// YENİ: Admin Mesaj Silme Fonksiyonu (Adminler her mesajı silebilir)
+// Admin Mesaj Silme Fonksiyonu (Adminler her mesajı silebilir)
 function deleteMessage(chatId, messageKey) {
     if (!isAdmin) {
         console.log("Yetkisiz silme denemesi.");
@@ -187,6 +210,7 @@ auth.onAuthStateChanged(user => {
         initChatApp(user.isAnonymous); 
     } else { 
         if (currentUser && !currentUser.isAnonymous) { 
+            // Kullanıcı çıkış yaptığında (veya anonim değilken) durumunu offline yap
             database.ref(`status/${currentUser.uid}`).set({ state: 'offline' }); 
         } 
         currentUser = null;
@@ -297,6 +321,49 @@ function updateUsername() {
     });
 }
 
+// YENİ: PROFİL FOTOĞRAFI YÜKLEME VE GÜNCELLEME MANTIĞI
+avatarUploadInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file || !currentUser || currentUser.isAnonymous) return;
+    if (!file.type.startsWith('image/')) { return alert("Lütfen sadece resim dosyası yükleyin."); }
+
+    if (typeof IMGBB_API_KEY === 'undefined') {
+        return alert("HATA: IMGBB_API_KEY config.js dosyanızda tanımlı değil!");
+    }
+
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    // Yükleniyor bilgisi
+    currentAvatarPreview.style.opacity = 0.5;
+
+    fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        method: 'POST',
+        body: formData
+    }).then(response => response.json()).then(result => {
+        if (result.success) {
+            const newAvatarUrl = result.data.url;
+            
+            // 1. Firebase Database'e kaydet
+            return database.ref(`users/${currentUser.uid}`).update({
+                avatarUrl: newAvatarUrl
+            }).then(() => {
+                // 2. DOM'u güncelle
+                currentAvatarPreview.src = newAvatarUrl;
+                alert("Profil fotoğrafı başarıyla güncellendi!");
+            });
+        } else {
+            alert('Resim yüklenemedi: ' + result.error.message);
+        }
+    }).catch(error => {
+        alert('Resim yüklenirken bir ağ hatası oluştu: ' + error);
+    }).finally(() => {
+        currentAvatarPreview.style.opacity = 1;
+        event.target.value = ''; // Inputu temizle
+    });
+});
+
+
 function setupPresence(userId, username) { 
     const userStatusRef = database.ref('/status/' + userId); 
     const isOnlineForDatabase = { state: 'online', username: username }; 
@@ -368,7 +435,7 @@ function loadUserChats() {
     }); 
 }
 
-// GÜNCEL loadChat FONKSİYONU (Mesaj Sahibi Silme, Admin Silme ve Linkler Entegre Edildi)
+// GÜNCELLENDİ: Mesaj çekilirken kullanıcının avatar URL'si çekilir ve HTML'e eklenir.
 function loadChat(chatId, chatName) { 
     if (currentChatId) { database.ref('chats/' + currentChatId).off(); } 
     currentChatId = chatId; 
@@ -396,7 +463,8 @@ function loadChat(chatId, chatName) {
         }
     });
 
-    chatRef.orderByChild('zaman').limitToLast(100).on('child_added', (snapshot) => { 
+    // Mesajları çekmeden önce, her bir mesaj için avatarı çekmek üzere async/await kullanıyoruz
+    chatRef.orderByChild('zaman').limitToLast(100).on('child_added', async (snapshot) => { 
         const mesaj = snapshot.val();
         const mesajId = snapshot.key; 
         const mesajSahibiMi = currentUser && mesaj.userId === currentUser.uid;
@@ -406,9 +474,16 @@ function loadChat(chatId, chatName) {
             notificationSound.play().catch(e => console.error("Bildirim sesi oynatılamadı:", e)); 
         } 
         
+        // 🚨 YENİ: Mesaj sahibi avatar URL'sini çek
+        let avatarUrl = DEFAULT_AVATAR_URL;
+        if (mesaj.userId) {
+            const userSnapshot = await database.ref(`users/${mesaj.userId}/avatarUrl`).once('value');
+            avatarUrl = userSnapshot.val() || DEFAULT_AVATAR_URL;
+        }
+
         const div = document.createElement('div'); 
         div.className = "mesaj " + (mesajSahibiMi ? 'sent' : 'received'); 
-        div.dataset.mesajId = mesajId; // Silme için mesaj ID'sini ekle
+        div.dataset.mesajId = mesajId; 
         
         const tarih = new Date(mesaj.zaman); 
         const saat = tarih.getHours().toString().padStart(2, '0'); 
@@ -421,7 +496,6 @@ function loadChat(chatId, chatName) {
         if (mesaj.type === 'image') { 
             mesajIcerigi = `<img src="${mesaj.imageUrl}" alt="Yüklenen resim">`; 
         } else { 
-            // XSS saldırılarına karşı temizle ve linke çevir
             let temizMetin = (mesaj.metin || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             mesajIcerigi = metniLinkeCevir(temizMetin);
         }
@@ -431,15 +505,16 @@ function loadChat(chatId, chatName) {
             silButonuHTML = `<button class="sil-butonu" data-id="${mesajId}">🗑️</button>`;
         }
         
-        // 2. ADMİN, HERHANGİ BİR MESAJI SİLEBİLİR (Admin butonu mesajın üst başlığında)
+        // 2. ADMİN, HERHANGİ BİR MESAJI SİLEBİLİR
         let adminSilButonuHTML = '';
-        if (isAdmin && !mesajSahibiMi) { // Sadece admin ve kendi mesajı değilse gösterelim
+        if (isAdmin && !mesajSahibiMi) { 
              adminSilButonuHTML = `<span class="admin-delete-btn" onclick="deleteMessage('${chatId}', '${mesajId}')">🗑️</span>`;
         }
         
-        // HTML yapısı
+        // HTML yapısı (Avatar eklendi)
         div.innerHTML = `
             <div class="mesaj-header">
+                <img class="avatar" src="${avatarUrl}" alt="${mesaj.username}">
                 <strong>${mesaj.username}</strong>
                 ${adminSilButonuHTML}
                 <span class="timestamp">${zamanMetni}</span>
@@ -447,7 +522,7 @@ function loadChat(chatId, chatName) {
             <div class="message-bubble">${mesajIcerigi} ${mesajSahibiMi ? silButonuHTML : ''}</div>
         `;
         
-        // Silme butonuna olay dinleyicisi ekle (Sadece mesaj sahibi butonu için)
+        // Silme butonuna olay dinleyicisi ekle
         if (mesajSahibiMi && !currentUser.isAnonymous) {
             const silButonu = div.querySelector('.sil-butonu');
             if (silButonu) {
