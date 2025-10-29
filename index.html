@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Chat Projesi: V0.0.1 ALPHA</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="chat-container">
+        <h1>// GitHub Chat: PR'lar Üzerinden Kalp Atışları</h1>
+        <div id="messages" class="scrollable">
+            <div class="message received">
+                <span class="author">@username23487:</span>
+                <span class="content">İlk commit: 'Proje başlatıldı. Selam millet!'</span>
+                <span class="timestamp">// 1m ago</span>
+            </div>
+            <div class="message sent">
+                <span class="author">@Sen:</span>
+                <span class="content">'Feature: Genel sohbet eklendi (merging the conversation)'</span>
+                <span class="timestamp">// 30s ago</span>
+            </div>
+        </div>
+        <div id="input-area">
+            <input type="text" id="message-input" placeholder="Commit mesajını buraya yaz...">
+            <button onclick="sendMessage()">Commit & Push</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
